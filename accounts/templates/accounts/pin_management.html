@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}PINs de acesso · PET Digital{% endblock %}
+{% block content %}
+<div class="container">
+  <h1 style="font-size:32px;">PINs de acesso</h1>
+  <p class="muted" style="font-size:13px;max-width:640px;">
+    O PIN substitui usuário e senha no login do aplicativo de campo. Cada PIN tem 6 dígitos, é único no sistema
+    e só é mostrado uma vez, no momento em que é gerado — anote e entregue ao colaborador imediatamente.
+  </p>
+
+  <table class="table" style="margin-top:24px;">
+    <thead>
+      <tr><th>Usuário</th><th>Papel</th><th>Unidade</th><th>PIN</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for account in users %}
+      <tr>
+        <td>
+          <span style="display:block;font-size:14px;">{{ account }}</span>
+          <span style="display:block;font-size:11px;color:var(--color-neutral-700);">@{{ account.username }}</span>
+        </td>
+        <td style="font-size:13px;">{{ account.get_role_display }}</td>
+        <td style="font-size:13px;">{{ account.unit.name|default:"—" }}</td>
+        <td>
+          {% if account.has_pin %}
+            <span class="status-badge status-ok">PIN definido</span>
+            <span class="mono muted" style="display:block;font-size:11px;margin-top:2px;">desde {{ account.pin_set_at|date:"d/m/Y H:i" }}</span>
+          {% else %}
+            <span class="status-badge status-danger">sem PIN</span>
+          {% endif %}
+        </td>
+        <td>
+          <form method="post" action="{% url 'accounts:generate_pin' account.pk %}" onsubmit="return confirm('Gerar um novo PIN para {{ account }}? O PIN atual deixa de funcionar.');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary" style="font-size:12px;">{% if account.has_pin %}Renovar PIN{% else %}Gerar PIN{% endif %}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

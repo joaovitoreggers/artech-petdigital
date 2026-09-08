@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load core_extras %}
+{% block title %}Funcionários · PET Digital{% endblock %}
+{% block content %}
+<div class="container">
+  <div style="margin-bottom:40px;">
+    <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);">Cadastro de trabalhadores autorizados · SESMT</div>
+    <h1 style="margin:6px 0 0;font-size:36px;">Funcionários e validade das NRs</h1>
+    <div style="display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap;">
+      <div style="font-size:13px;color:var(--color-neutral-700);margin-top:8px;max-width:620px;line-height:1.5;">
+        A leitura do QR do crachá em campo consulta este cadastro. Documentação vencida bloqueia a entrada; vencimento em até 30 dias libera com aviso de renovação.
+      </div>
+      <a href="{% url 'workers:create' %}" class="btn btn-primary blueprint" style="margin-left:auto;height:44px;padding:0 20px;letter-spacing:0.04em;display:inline-flex;align-items:center;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        + Cadastrar funcionário
+      </a>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div><div class="kpi-label">Total de funcionários</div><div class="kpi-value">{{ kpis.total }}</div></div>
+    <div><div class="kpi-label">Documentação em dia</div><div class="kpi-value" style="color:#2f8f5b;">{{ kpis.valid }}</div></div>
+    <div><div class="kpi-label">Vencendo em 30 dias</div><div class="kpi-value" style="color:#8a5a00;">{{ kpis.expiring_soon }}</div><div class="kpi-note">renovação necessária</div></div>
+    <div><div class="kpi-label">Documentação vencida</div><div class="kpi-value" style="color:#8e2020;">{{ kpis.expired }}</div><div class="kpi-note">entrada bloqueada</div></div>
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;">
+    <a href="?" class="tag {% if not selected_status %}tag-accent{% else %}tag-outline{% endif %}">todos</a>
+    <a href="?status=valid" class="tag {% if selected_status == 'valid' %}tag-accent{% else %}tag-outline{% endif %}">em dia</a>
+    <a href="?status=expiring_soon" class="tag {% if selected_status == 'expiring_soon' %}tag-accent{% else %}tag-outline{% endif %}">vencendo</a>
+    <a href="?status=expired" class="tag {% if selected_status == 'expired' %}tag-accent{% else %}tag-outline{% endif %}">vencido</a>
+    <select class="input" style="width:auto;margin-left:auto;" onchange="window.location.search='?unit='+this.value">
+      <option value="">Todas as unidades</option>
+      {% for unit in units %}
+        <option value="{{ unit.id }}" {% if selected_unit == unit.id|stringformat:'s' %}selected{% endif %}>{{ unit.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th style="width:24%">Funcionário</th><th>Vínculo</th><th>Unidade</th><th style="width:34%">Normas e vencimentos</th><th>Situação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for worker in workers %}
+      <tr>
+        <td>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <span style="width:30px;height:30px;flex:none;border:1px solid var(--color-divider);display:grid;place-items:center;font-family:var(--font-heading);font-size:11px;">
+              {{ worker.full_name|slice:":1" }}
+            </span>
+            <span>
+              <span style="display:block;font-size:14px;">{{ worker.full_name }}</span>
+              <span style="display:block;font-size:11px;color:var(--color-neutral-700);">{{ worker.job_title }} · mat. {{ worker.registration_number }}</span>
+            </span>
+          </div>
+        </td>
+        <td style="font-size:12px;">{{ worker.company }}<span style="display:block;font-size:11px;color:var(--color-neutral-600);">{{ worker.get_employment_type_display }}</span></td>
+        <td style="font-size:13px;">{{ worker.unit.name }}</td>
+        <td>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            {% for document in worker.documents.all %}
+              <div style="display:flex;gap:8px;align-items:baseline;font-size:12px;">
+                <span class="mono" style="width:46px;">{{ document.document_type.code }}</span>
+                <span class="mono muted">{{ document.valid_until|date:"d/m/Y" }}</span>
+                <span class="{{ document.valid_until|expiry_badge_class }}" style="margin-left:auto;font-size:11px;">
+                  {% if document.status == 'expired' %}vencido{% elif document.status == 'expiring_soon' %}vence em {{ document.days_remaining }}d{% else %}em dia{% endif %}
+                </span>
+              </div>
+            {% empty %}
+              <span class="muted" style="font-size:12px;">sem documentos cadastrados</span>
+            {% endfor %}
+          </div>
+        </td>
+        <td>
+          <span class="status-badge {% if worker.overall_status == 'valid' %}status-ok{% elif worker.overall_status == 'expiring_soon' %}status-warning{% elif worker.overall_status == 'expired' %}status-danger{% else %}status-neutral{% endif %}">
+            {% if worker.overall_status == 'valid' %}em dia{% elif worker.overall_status == 'expiring_soon' %}vencendo{% elif worker.overall_status == 'expired' %}vencido{% else %}sem docs.{% endif %}
+          </span>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" style="padding:28px 0;font-size:13px;color:var(--color-neutral-700);">Nenhum funcionário nesse filtro.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

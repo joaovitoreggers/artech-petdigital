@@ -1,0 +1,28 @@
+{% if not_found %}
+<div style="font-size:12px;color:#8e2020;">Crachá não reconhecido.</div>
+{% elif scanned_worker %}
+<div class="blueprint" style="padding:12px;">
+  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+  <div style="display:flex;align-items:baseline;gap:8px;">
+    <div style="font-family:var(--font-heading);font-weight:600;font-size:18px;">{{ scanned_worker.full_name }}</div>
+    <div class="mono" style="margin-left:auto;font-size:11px;color:var(--color-neutral-700);">mat. {{ scanned_worker.registration_number }}</div>
+  </div>
+  <div style="font-size:12px;color:var(--color-neutral-700);">{{ scanned_worker.job_title }} · {{ scanned_worker.company }}</div>
+  <div style="margin-top:10px;display:flex;flex-direction:column;gap:5px;">
+    {% for document in scanned_worker.documents.all %}
+      <div style="display:flex;gap:8px;font-size:12px;align-items:center;">
+        <span>{{ document.document_type.code }}</span>
+        <span class="mono muted" style="margin-left:auto;">{{ document.valid_until|date:"d/m/Y" }}</span>
+      </div>
+    {% endfor %}
+  </div>
+  <div style="margin-top:12px;padding:9px 11px;font-family:var(--font-heading);font-weight:600;font-size:14px;letter-spacing:0.04em;
+      {% if scanned_status == 'expired' %}background:#f6e3e3;color:#8e2020;{% elif scanned_status == 'expiring_soon' %}background:#f5e6c8;color:#6b4400;{% else %}background:#dff0e6;color:#1d4d33;{% endif %}">
+    {% if scanned_status == 'expired' %}ENTRADA BLOQUEADA — documentação vencida{% elif scanned_status == 'expiring_soon' %}LIBERADO — documentação vencendo em breve{% else %}LIBERADO PARA A FRENTE{% endif %}
+  </div>
+  {% if scanned_status != 'expired' %}
+    <button type="submit" name="add_worker" value="1" formnovalidate class="btn btn-secondary btn-block" style="height:38px;">Adicionar à equipe autorizada</button>
+    <input type="hidden" name="worker_id" value="{{ scanned_worker.pk }}">
+  {% endif %}
+</div>
+{% endif %}

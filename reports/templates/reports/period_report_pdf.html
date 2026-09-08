@@ -1,0 +1,120 @@
+{% load static %}<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #1d1f20; margin: 0; }
+  h2 { font-size: 22px; margin: 0; }
+  h4 { font-size: 13px; margin: 22px 0 8px; }
+  .header { display: flex; gap: 16px; align-items: flex-start; padding-bottom: 12px; border-bottom: 2px solid #1d1f20; }
+  .header img { height: 40px; }
+  .kicker { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #597ea3; }
+  .header-meta { font-family: monospace; font-size: 9px; color: #5d5d60; text-align: right; line-height: 1.7; }
+  .summary { display: flex; gap: 20px; margin-top: 20px; }
+  .summary > div { flex: 1; }
+  .summary-value { font-size: 26px; font-weight: bold; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 10px; }
+  th { text-align: left; font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: #5d5d60; padding: 5px; border-bottom: 1px solid #1d1f20; }
+  td { padding: 5px; border-bottom: 1px solid #e7e7ea; }
+  .mono { font-family: monospace; }
+  .accent { color: #597ea3; }
+  .danger { color: #8e2020; }
+  .permit-gas-block { border: 1px solid #d4d4d7; padding: 8px 10px; margin-bottom: 10px; }
+  .chart { display: flex; align-items: flex-end; gap: 2px; height: 70px; margin-top: 10px; }
+  .chart > div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
+  .chart-bar { display: flex; flex-direction: column; justify-content: flex-end; background: #597ea3; }
+  .chart-bar-out { background: #8e2020; }
+  .signatures { display: flex; gap: 40px; margin-top: 50px; padding-top: 10px; }
+  .signatures > div { flex: 1; border-top: 1px solid #1d1f20; padding-top: 6px; }
+  .footnote { font-family: monospace; font-size: 8px; color: #7a7a7d; margin-top: 20px; line-height: 1.7; }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div style="flex:1;">
+      <div class="kicker">Lar Cooperativa Agroindustrial · SESMT</div>
+      <h2>Relatório de Permissões de Entrada e Trabalho</h2>
+      <div style="font-size:11px;color:#5d5d60;margin-top:4px;">
+        Período de {{ period_start|date:"d/m/Y" }} a {{ period_end|date:"d/m/Y" }}{% if unit %} · {{ unit.name }}{% endif %}
+      </div>
+    </div>
+    <div class="header-meta">
+      <div>emitido {{ generated_at|date:"d/m/Y H:i" }}</div>
+      <div>{{ generated_by.get_full_name|default:generated_by.username }}</div>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div><div class="kicker">PETs no período</div><div class="summary-value">{{ summary.total_permits }}</div></div>
+    <div><div class="kicker">Encerradas</div><div class="summary-value">{{ summary.closed }}</div></div>
+    <div><div class="kicker">Ocorrências</div><div class="summary-value danger">{{ summary.incidents }}</div></div>
+    <div><div class="kicker">Conformidade atmosférica</div><div class="summary-value">{{ summary.compliance }}%</div></div>
+  </div>
+
+  <h4>1. Permissões emitidas no período</h4>
+  <table>
+    <thead>
+      <tr><th>PET</th><th>Data</th><th>Local / unidade</th><th>Normas</th><th>Equipe</th><th>Situação</th></tr>
+    </thead>
+    <tbody>
+      {% for permit in permits %}
+      <tr>
+        <td class="mono">{{ permit.permit_number }}</td>
+        <td class="mono">{{ permit.created_at|date:"d/m/Y" }}</td>
+        <td>{{ permit.specific_location }} · {{ permit.unit.name }}</td>
+        <td class="mono accent">{% for area in permit.risk_areas.all %}{{ area.regulatory_code }}{% if not forloop.last %} · {% endif %}{% endfor %}</td>
+        <td class="mono">{{ permit.team_members.count }}</td>
+        <td>{{ permit.get_status_display }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6">Nenhuma PET emitida no período.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h4>2. Monitoramento dos medidores por PET</h4>
+  <div style="font-size:10px;color:#5d5d60;margin-bottom:10px;">
+    Valores mínimo, médio e máximo registrados durante a vigência de cada permissão. Limites NR-33: O₂ 19,5–23,0% · CO ≤25ppm · H₂S ≤8ppm · LEL ≤10%.
+  </div>
+  {% for entry in monitored %}
+  <div class="permit-gas-block">
+    <div style="display:flex;gap:12px;"><span class="mono">{{ entry.permit.permit_number }}</span><span>{{ entry.permit.specific_location }}</span>
+      <span class="mono" style="margin-left:auto;color:#5d5d60;">{{ entry.summary.total_readings }} leituras · {{ entry.summary.out_of_limits }} fora do limite</span>
+    </div>
+    <table style="margin-top:6px;">
+      <thead><tr><th>Gás</th><th>Mínimo</th><th>Médio</th><th>Máximo</th><th>Limite</th></tr></thead>
+      <tbody>
+        {% for row in entry.summary.rows %}
+        <tr><td>{{ row.label }}</td><td class="mono">{{ row.min }}</td><td class="mono">{{ row.avg }}</td><td class="mono">{{ row.max }}</td><td class="mono">{{ row.limit }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% empty %}
+  <div>Nenhuma PET com monitoramento atmosférico no período.</div>
+  {% endfor %}
+
+  <h4>3. Condição das medições por dia</h4>
+  <div class="chart">
+    {% for day in daily_condition %}
+      <div title="{{ day.date }}">
+        <div class="chart-bar" style="height:{{ day.height_pct }}%;">
+          <div class="chart-bar-out" style="height:{{ day.out_pct }}%;"></div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="signatures">
+    <div>Técnico de Segurança do Trabalho</div>
+    <div>Coordenação SESMT</div>
+  </div>
+  <div class="footnote">
+    Documento gerado pelo PET Digital a partir dos registros assinados em campo. Cada PET carrega assinaturas digitais,
+    coordenada GPS e hash de integridade. Retenção mínima de 5 anos conforme procedimento interno do SESMT.
+  </div>
+</body>
+</html>

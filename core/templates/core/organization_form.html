@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Cadastrar empresa · PET Digital{% endblock %}
+{% block content %}
+<div class="container" style="max-width:680px;">
+  <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);">Plataforma · superusuário</div>
+  <h1 style="font-size:28px;">Cadastrar empresa</h1>
+  <p class="muted" style="font-size:13px;">
+    Cria a empresa com sua própria cópia das áreas de risco, checklists, EPIs obrigatórios e tipos de documento —
+    editável depois pelo admin do Django — mais a primeira unidade e o primeiro usuário administrador, com PIN de acesso.
+  </p>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="card" style="border:none;padding:0;gap:14px;">
+      <div class="field">
+        <label>{{ form.name.label }}</label>
+        {{ form.name }}
+        {% if form.name.errors %}<div style="color:#8e2020;font-size:12px;">{{ form.name.errors }}</div>{% endif %}
+      </div>
+      <div class="field">
+        <label>{{ form.cnpj.label }}</label>
+        {{ form.cnpj }}
+      </div>
+
+      <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);margin-top:6px;">Primeira unidade</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        <div class="field" style="flex:2;min-width:200px;">
+          <label>{{ form.unit_name.label }}</label>
+          {{ form.unit_name }}
+        </div>
+        <div class="field" style="flex:1;min-width:160px;">
+          <label>{{ form.unit_city.label }}</label>
+          {{ form.unit_city }}
+        </div>
+        <div class="field" style="flex:0 0 80px;">
+          <label>{{ form.unit_state.label }}</label>
+          {{ form.unit_state }}
+        </div>
+      </div>
+
+      <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);margin-top:6px;">Primeiro administrador</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        <div class="field" style="flex:2;min-width:220px;">
+          <label>{{ form.admin_full_name.label }}</label>
+          {{ form.admin_full_name }}
+        </div>
+        <div class="field" style="flex:1;min-width:140px;">
+          <label>{{ form.admin_registration_number.label }}</label>
+          {{ form.admin_registration_number }}
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+        <a href="{% url 'core:organization_list' %}" class="btn btn-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary">Cadastrar empresa</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

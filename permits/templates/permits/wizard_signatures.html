@@ -1,0 +1,61 @@
+{% extends "permits/wizard_base.html" %}
+{% load static %}
+{% block wizard_body %}
+<div>
+  <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);">Técnico de segurança emitente</div>
+  <div style="font-size:14px;margin:4px 0 8px;">{{ user.get_full_name|default:user.username }}{% if user.registration_number %} · mat. {{ user.registration_number }}{% endif %}</div>
+  <div class="blueprint signature-pad-wrapper">
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <canvas id="signature-technician" width="740" height="240"></canvas>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
+    <span id="signature-technician-status" style="font-size:11px;color:var(--color-neutral-600);">assine no quadro acima</span>
+    <button type="button" data-clear-signature="signature-technician" class="btn btn-ghost" style="font-size:12px;margin-left:auto;">Limpar</button>
+  </div>
+</div>
+
+<div>
+  <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);">Executante responsável</div>
+  <select name="executor_worker_id" class="input" style="margin:4px 0 8px;">
+    {% for member in team_members %}
+      <option value="{{ member.worker.pk }}">{{ member.worker.full_name }} · mat. {{ member.worker.registration_number }}</option>
+    {% endfor %}
+  </select>
+  <div class="blueprint signature-pad-wrapper">
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <canvas id="signature-executor" width="740" height="240"></canvas>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
+    <span id="signature-executor-status" style="font-size:11px;color:var(--color-neutral-600);">assine no quadro acima</span>
+    <button type="button" data-clear-signature="signature-executor" class="btn btn-ghost" style="font-size:12px;margin-left:auto;">Limpar</button>
+  </div>
+</div>
+
+<div class="mono muted" style="font-size:11px;line-height:1.6;">
+  Assinatura registrada com data, hora, matrícula e coordenada GPS. Hash gravado no histórico da PET.
+</div>
+
+<input type="hidden" name="technician_signature" id="technician_signature">
+<input type="hidden" name="executor_signature" id="executor_signature">
+<input type="hidden" name="latitude" id="signature_latitude">
+<input type="hidden" name="longitude" id="signature_longitude">
+{% endblock %}
+
+{% block advance_label %}Emitir PET{% endblock %}
+
+{% block extra_body %}
+<script src="{% static 'permits/js/wizard.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  PetWizard.prepareSignatureStep({
+    canvases: ['signature-technician', 'signature-executor'],
+    hiddenFieldsByCanvas: {'signature-technician': 'technician_signature', 'signature-executor': 'executor_signature'},
+    statusFieldsByCanvas: {'signature-technician': 'signature-technician-status', 'signature-executor': 'signature-executor-status'},
+    latitudeFieldId: 'signature_latitude',
+    longitudeFieldId: 'signature_longitude',
+    formId: 'wizard-form',
+    submitterName: 'advance',
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "permits/wizard_base.html" %}
+{% block wizard_body %}
+{% if confined_space_guidance %}
+  <div style="background:var(--color-accent-100);padding:11px 13px;font-size:12px;color:var(--color-accent-800);line-height:1.45;">
+    {{ confined_space_guidance }}
+  </div>
+{% endif %}
+
+{% for group_title, items in groups.items %}
+  <div>
+    <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:8px;">{{ group_title }}</div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      {% for item in items %}
+        <div style="display:flex;flex-direction:column;gap:6px;padding:11px 0;border-bottom:1px solid var(--color-divider);">
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            {% if item.regulatory_code %}<span class="tag tag-accent" style="font-size:10px;flex:none;">{{ item.regulatory_code }}</span>{% endif %}
+            <span style="font-size:14px;">{{ item.description }}</span>
+          </div>
+          <div class="seg" style="align-self:flex-start;">
+            {% for value, label in answer_choices %}
+              <label class="seg-opt">
+                <input type="radio" name="answer_{{ item.pk }}" value="{{ value }}" {% if item.answer == value %}checked{% endif %}>
+                {{ label }}
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endfor %}
+
+<div class="blueprint" style="padding:12px;">
+  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+  <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);">Registro fotográfico do local</div>
+  <input type="file" name="photo" accept="image/*" capture="environment" class="input" style="margin-top:10px;">
+</div>
+{% endblock %}

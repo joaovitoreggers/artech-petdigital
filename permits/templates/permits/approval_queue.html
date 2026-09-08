@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Aprovações pendentes · PET Digital{% endblock %}
+{% block content %}
+<div class="container">
+  <h1 style="font-size:32px;">Aprovações pendentes</h1>
+  <p class="muted" style="font-size:13px;">PETs de técnicos sem autoemissão aguardando liberação.</p>
+
+  {% for permit in permits %}
+  <div class="blueprint" style="padding:14px 16px;margin-bottom:16px;">
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;">
+      <div style="font-family:var(--font-heading);font-weight:600;font-size:18px;">{{ permit.permit_number }}</div>
+      <div style="font-size:13px;">{{ permit.specific_location }}</div>
+      <div style="font-size:12px;color:var(--color-accent-700);">
+        {% for area in permit.risk_areas.all %}{{ area.regulatory_code }}{% if not forloop.last %} · {% endif %}{% endfor %}
+      </div>
+      <div class="mono muted" style="margin-left:auto;font-size:11px;">{{ permit.requested_by }} · {{ permit.unit.name }}</div>
+    </div>
+    <p style="font-size:13px;margin-top:8px;">{{ permit.description }}</p>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <form method="post" action="{% url 'permits:approve' permit.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">Aprovar e abrir</button>
+      </form>
+      <form method="post" action="{% url 'permits:reject' permit.pk %}" style="display:flex;gap:8px;">
+        {% csrf_token %}
+        <input type="text" name="reason" class="input" placeholder="Motivo da rejeição">
+        <button type="submit" class="btn btn-secondary">Rejeitar</button>
+      </form>
+    </div>
+  </div>
+  {% empty %}
+  <div class="muted" style="font-size:13px;">Nenhuma PET aguardando aprovação.</div>
+  {% endfor %}
+</div>
+{% endblock %}

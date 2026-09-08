@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}PET emitida · PET Digital{% endblock %}
+{% block content %}
+<div style="min-height:70vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:24px;text-align:center;background:var(--color-accent-900);color:var(--color-bg);">
+  <div style="width:56px;height:56px;border:1px solid rgba(242,242,243,.5);display:grid;place-items:center;font-size:24px;">✓</div>
+  <div style="font-family:var(--font-heading);font-weight:600;font-size:30px;line-height:1.1;margin-top:18px;">
+    {% if work_permit.status == 'open' %}PET emitida{% else %}PET aguardando aprovação{% endif %}
+  </div>
+  <div class="mono" style="font-size:15px;margin-top:6px;opacity:.8;">{{ work_permit.permit_number }}</div>
+  <div style="font-size:13px;margin-top:16px;opacity:.75;max-width:320px;line-height:1.5;">
+    {% if work_permit.status == 'open' %}
+      A permissão está aberta e a equipe já pode iniciar o serviço conforme as condições registradas.
+    {% else %}
+      As assinaturas foram registradas. Um gestor precisa aprovar esta PET antes do início do serviço.
+    {% endif %}
+  </div>
+  <div style="display:flex;gap:10px;margin-top:28px;width:100%;max-width:320px;">
+    <a href="{% url 'permits:home' %}" class="btn btn-secondary" style="flex:1;height:44px;color:var(--color-bg);border-color:rgba(242,242,243,.4);">Ver lista</a>
+    <a href="{% url 'permits:detail' work_permit.pk %}" class="btn" style="flex:1;height:44px;background:var(--color-bg);color:var(--color-accent-900);border-color:var(--color-bg);">Abrir PET</a>
+  </div>
+</div>
+{% endblock %}

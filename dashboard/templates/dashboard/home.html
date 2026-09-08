@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% load core_extras permits_extras %}
+{% block title %}Painel do Gestor · PET Digital{% endblock %}
+{% block content %}
+<div class="container">
+
+  {% if active_evacuation %}
+    <div class="evacuation-overlay">
+      <div class="evacuation-title">EVACUAÇÃO ACIONADA</div>
+      <div style="font-size:16px;max-width:640px;">{{ active_evacuation.reason }} — unidade {{ active_evacuation.unit.name }}</div>
+      <div class="mono" style="font-size:12px;opacity:.9;">acionada às {{ active_evacuation.triggered_at|date:"H:i" }} por {{ active_evacuation.triggered_by }}</div>
+      <div style="display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;justify-content:center;">
+        {% if not active_evacuation.siren_silenced_at %}
+        <form method="post" action="{% url 'dashboard:silence_siren' active_evacuation.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn" style="height:46px;padding:0 22px;background:#fff;color:#8e2020;border-color:#fff;font-size:15px;">Silenciar sirene</button>
+        </form>
+        {% endif %}
+        <form method="post" action="{% url 'dashboard:end_evacuation' active_evacuation.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn" style="height:46px;padding:0 22px;background:transparent;color:#fff;border-color:#fff;font-size:15px;">Registrar evacuação concluída</button>
+        </form>
+      </div>
+    </div>
+  {% elif alarmed_permit %}
+    <div class="alarm-banner">
+      <span class="alarm-dot"></span>
+      <span style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:0.02em;">ALERTA ATMOSFÉRICO</span>
+      <span style="font-size:14px;">{{ alarmed_permit.permit_number }} · {{ alarmed_permit.specific_location }}</span>
+      <form method="post" action="{% url 'dashboard:trigger_evacuation' alarmed_permit.pk %}" style="margin-left:auto;">
+        {% csrf_token %}
+        <button type="submit" class="btn" style="height:34px;background:#fdf3f3;color:#8e2020;border-color:#fdf3f3;">Acionar evacuação</button>
+      </form>
+    </div>
+  {% endif %}
+
+  <div style="display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:40px;">
+    <div>
+      <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);">Painel de gestão de risco · SESMT</div>
+      <h1 style="margin:6px 0 0;font-size:36px;">Permissões de entrada e trabalho</h1>
+    </div>
+    {% if pending_approval_count %}
+      <a href="{% url 'permits:approval_queue' %}" class="btn btn-primary" style="margin-left:auto;height:44px;padding:0 20px;">{{ pending_approval_count }} aguardando aprovação</a>
+    {% endif %}
+    <a href="{% url 'reports:create' %}" class="btn btn-secondary blueprint" style="height:44px;padding:0 20px;letter-spacing:0.04em;display:inline-flex;align-items:center;">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      Relatório PDF por período
+    </a>
+  </div>
+
+  <div class="kpi-grid">
+    <div><div class="kpi-label">PETs abertas agora</div><div class="kpi-value">{{ kpis.open_now }}</div></div>
+    <div><div class="kpi-label">Encerradas · 30 dias</div><div class="kpi-value">{{ kpis.closed_last_30_days }}</div></div>
+    <div><div class="kpi-label">Ocorrências · 30 dias</div><div class="kpi-value" style="color:#8e2020;">{{ kpis.incidents_last_30_days }}</div></div>
+    <div><div class="kpi-label">Conformidade atmosférica</div><div class="kpi-value" style="color:#2f8f5b;">{{ kpis.atmospheric_compliance }}%</div></div>
+  </div>
+
+  <div class="section-title"><h3>Monitoramento em tempo real</h3><span class="muted" style="font-size:12px;">leituras manuais registradas em campo</span></div>
+  <div style="display:flex;flex-direction:column;gap:26px;">
+    {% for permit in open_permits %}
+      <div class="blueprint" style="padding:18px 20px;{% if permit.is_in_atmospheric_alarm %}background:#f9eded;{% endif %}">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;">
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:20px;">{{ permit.permit_number }}</div>
+          <div style="font-size:14px;">{{ permit.specific_location }}</div>
+          <div style="font-size:12px;color:var(--color-accent-700);">
+            {% for area in permit.risk_areas.all %}{{ area.regulatory_code }}{% if not forloop.last %} · {% endif %}{% endfor %}
+          </div>
+          <span class="status-badge {% if permit.is_in_atmospheric_alarm %}status-danger{% else %}status-ok{% endif %}" style="margin-left:auto;">
+            {% if permit.is_in_atmospheric_alarm %}em alarme{% else %}{{ permit.get_status_display }}{% endif %}
+          </span>
+        </div>
+        {% with latest=permit.latest_gas_reading %}
+        {% if latest %}
+        <div class="gauge-grid" style="margin-top:18px;">
+          {% for spec in permit|gauge_specs %}
+            <div><div class="gauge-label">{{ spec.label }}</div><div class="gauge-value {% if not latest.is_within_limits %}out-of-limits{% endif %}"><span class="value">{{ latest|get_attr:spec.key }}</span><span class="unit">{{ spec.unit }}</span></div></div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        <div style="display:flex;gap:22px;margin-top:18px;padding-top:13px;border-top:1px solid var(--color-divider);font-size:12px;color:var(--color-neutral-700);flex-wrap:wrap;">
+          <span>{{ permit.team_members.count }} na frente</span>
+          <span>emitida {{ permit.opened_at|date:"d/m H:i" }}</span>
+          <span>{{ permit.requested_by }}</span>
+        </div>
+      </div>
+    {% empty %}
+      <div class="muted" style="font-size:13px;">Nenhuma PET aberta no momento.</div>
+    {% endfor %}
+  </div>
+
+  <div class="section-title"><h3>Condição das medições por dia · 30 dias</h3></div>
+  <div style="display:flex;align-items:flex-end;gap:4px;height:140px;">
+    {% for day in chart_days %}
+      <div title="{{ day.date }} · {{ day.total }} leituras" style="flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;">
+        <div style="height:{{ day.height_pct }}%;display:flex;flex-direction:column;justify-content:flex-end;background:var(--color-accent);">
+          <div style="height:{{ day.out_pct }}%;background:#8e2020;"></div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="section-title"><h3>Intercorrências por área de risco</h3></div>
+  <table class="table">
+    <thead><tr><th>Área de risco</th><th>Norma</th><th>PETs</th><th>Ocorrências</th><th style="width:34%">Taxa</th></tr></thead>
+    <tbody>
+      {% for row in risk_area_analysis %}
+      <tr>
+        <td>{{ row.risk_area.name }}</td>
+        <td class="mono" style="color:var(--color-accent-700);">{{ row.risk_area.regulatory_code }}</td>
+        <td class="mono">{{ row.total }}</td>
+        <td class="mono" style="color:{% if row.incidents %}#8e2020{% else %}inherit{% endif %};">{{ row.incidents }}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="flex:1;height:8px;background:var(--color-neutral-200);"><div style="height:8px;width:{{ row.rate }}%;background:{% if row.rate > 0 %}#8e2020{% else %}var(--color-accent){% endif %};"></div></div>
+            <span class="mono" style="font-size:12px;width:40px;text-align:right;">{{ row.rate }}%</span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="section-title"><h3>Últimas ocorrências</h3></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:22px;">
+    {% for permit in incidents %}
+      <div class="blueprint" style="padding:14px 16px;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;">
+          <span class="mono" style="font-size:12px;">{{ permit.permit_number }}</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--color-neutral-700);" class="mono">{{ permit.closed_at|date:"d/m H:i" }}</span>
+        </div>
+        <div style="font-size:12px;color:var(--color-neutral-700);margin-top:4px;">{{ permit.specific_location }}</div>
+        <div style="font-size:13px;margin-top:8px;">{{ permit.description }}</div>
+      </div>
+    {% empty %}
+      <div class="muted" style="font-size:13px;">Nenhuma ocorrência registrada.</div>
+    {% endfor %}
+  </div>
+
+  <div style="margin-top:40px;"><a href="{% url 'dashboard:history' %}" class="btn btn-secondary">Ver histórico completo →</a></div>
+</div>
+{% endblock %}

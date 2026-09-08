@@ -1,0 +1,41 @@
+{% extends "permits/wizard_base.html" %}
+{% load static %}
+{% block wizard_body %}
+<div class="blueprint" style="padding:0;aspect-ratio:1;position:relative;overflow:hidden;">
+  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+  <div id="qr-reader" style="width:100%;height:100%;"></div>
+</div>
+<div id="qr-status" class="mono muted" style="font-size:11px;text-align:center;">aponte a câmera para o QR do crachá</div>
+
+<div id="scanned-worker-container">
+  {% include "permits/_scanned_worker.html" %}
+</div>
+
+<div>
+  <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:8px;">Equipe autorizada · {{ team_members|length }}</div>
+  {% for member in team_members %}
+    <div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--color-divider);font-size:13px;">
+      <span style="width:26px;height:26px;border:1px solid var(--color-divider);display:grid;place-items:center;font-family:var(--font-heading);font-size:11px;">{{ member.worker.full_name|slice:":2" }}</span>
+      <span>{{ member.worker.full_name }}</span>
+      <span style="margin-left:auto;font-size:11px;color:#2f8f5b;">liberado</span>
+    </div>
+  {% empty %}
+    <div class="muted" style="font-size:12px;">Nenhum executante adicionado ainda.</div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_body %}
+<script src="{% static 'permits/js/html5-qrcode.min.js' %}"></script>
+<script src="{% static 'permits/js/wizard.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  PetWizard.startBadgeScanner({
+    readerId: 'qr-reader',
+    statusId: 'qr-status',
+    scanUrl: '{% url "permits:wizard_team_scan" pk=work_permit.pk %}',
+    targetId: 'scanned-worker-container',
+  });
+});
+</script>
+{% endblock %}

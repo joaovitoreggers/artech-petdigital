@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}PET Digital · Técnico{% endblock %}
+{% block content %}
+<div style="background:var(--color-accent-900);color:var(--color-bg);padding:18px 16px 16px;">
+  <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;opacity:.7;">{{ user.unit.name|default:"Unidade não definida" }}</div>
+  <div style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1.1;margin-top:4px;">Permissões de entrada e trabalho</div>
+</div>
+
+<div class="mobile-container">
+  {% if missing_unit %}
+    <div style="padding:12px 16px;background:#f6e3e3;color:#8e2020;font-size:13px;">
+      Seu usuário não tem uma unidade associada — não é possível emitir PETs até isso ser configurado em /admin/.
+    </div>
+  {% endif %}
+  <div style="display:flex;border-bottom:1px solid var(--color-divider);">
+    <a href="?tab=open" style="flex:1;padding:12px 0;text-align:center;font-family:var(--font-heading);font-weight:600;font-size:14px;text-decoration:none;color:{% if tab == 'open' %}var(--color-text){% else %}var(--color-neutral-600){% endif %};border-bottom:2px solid {% if tab == 'open' %}var(--color-accent){% else %}transparent{% endif %};">Abertas · {{ open_count }}</a>
+    <a href="?tab=closed" style="flex:1;padding:12px 0;text-align:center;font-family:var(--font-heading);font-weight:600;font-size:14px;text-decoration:none;color:{% if tab == 'closed' %}var(--color-text){% else %}var(--color-neutral-600){% endif %};border-bottom:2px solid {% if tab == 'closed' %}var(--color-accent){% else %}transparent{% endif %};">Encerradas · {{ closed_count }}</a>
+  </div>
+
+  <div style="padding:16px;display:flex;flex-direction:column;gap:18px;">
+    {% for permit in permits %}
+      <a href="{% url 'permits:detail' permit.pk %}" class="blueprint permit-card">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="permit-card-header">
+          <div class="permit-card-id">{{ permit.permit_number }}</div>
+          <span class="status-badge {% if permit.status == 'open' %}status-ok{% elif permit.status == 'pending_approval' %}status-warning{% elif permit.status == 'incident' %}status-danger{% else %}status-neutral{% endif %}" style="margin-left:auto;">
+            {{ permit.get_status_display }}
+          </span>
+        </div>
+        <div style="font-size:14px;margin-top:6px;line-height:1.35;">{{ permit.specific_location|default:"Local não informado" }}</div>
+        <div style="font-size:12px;color:var(--color-accent-700);margin-top:2px;">
+          {% for area in permit.risk_areas.all %}{{ area.regulatory_code }}{% if not forloop.last %} · {% endif %}{% endfor %}
+        </div>
+        <div class="permit-card-footer">
+          <span>{{ permit.created_at|date:"d/m H:i" }}</span>
+          <span>{{ permit.team_members.count }} na frente</span>
+        </div>
+      </a>
+    {% empty %}
+      <div class="muted" style="font-size:13px;text-align:center;padding:24px 0;">Nenhuma PET nesta aba.</div>
+    {% endfor %}
+  </div>
+
+  <div style="padding:12px 16px 16px;border-top:1px solid var(--color-divider);">
+    <form method="post" action="{% url 'permits:create' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary btn-block blueprint" style="height:48px;font-size:15px;letter-spacing:0.04em;margin:0;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        + NOVA PET
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

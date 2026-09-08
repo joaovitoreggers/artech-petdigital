@@ -1,0 +1,71 @@
+{% extends "permits/wizard_base.html" %}
+{% block wizard_body %}
+<div>
+  <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:8px;">EPIs obrigatórios para esta PET</div>
+  <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.7;">
+    {% for item in required_items %}
+      <li>{{ item }}</li>
+    {% empty %}
+      <li class="muted">Nenhum EPI específico cadastrado para as áreas selecionadas.</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<div class="blueprint" style="padding:12px;">
+  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+  <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);">Foto do executante usando os EPIs</div>
+
+  {% if team_members %}
+    <div class="field" style="margin-top:10px;">
+      <label>Executante fotografado</label>
+      <select name="worker_id" class="input">
+        {% for member in team_members %}
+          <option value="{{ member.worker.pk }}">{{ member.worker.full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  {% endif %}
+
+  <input type="file" name="photo" accept="image/*" capture="environment" class="input" style="margin-top:10px;">
+  <button type="submit" name="verify" value="1" formnovalidate class="btn btn-secondary btn-block" style="height:42px;">Enviar foto para verificação</button>
+  <div class="mono muted" style="font-size:10px;margin-top:8px;line-height:1.5;">
+    A foto é analisada automaticamente para conferir os itens acima. Fora do padrão? Envie outra foto.
+  </div>
+</div>
+
+{% with latest=verifications.0 %}
+{% if latest %}
+  <div style="padding:12px;{% if latest.passed %}background:#dff0e6;color:#1d4d33;{% else %}background:#f6e3e3;color:#8e2020;{% endif %}">
+    <div style="font-family:var(--font-heading);font-weight:600;font-size:15px;">
+      {% if latest.passed %}EPIs verificados{% else %}Verificação reprovada{% endif %}
+    </div>
+    {% if latest.ai_summary %}<div style="font-size:12px;margin-top:3px;">{{ latest.ai_summary }}</div>{% endif %}
+    {% if latest.error_message %}<div style="font-size:12px;margin-top:3px;">{{ latest.error_message }}</div>{% endif %}
+  </div>
+  {% if latest.items_result %}
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      {% for result in latest.items_result %}
+        <div style="display:flex;gap:8px;align-items:center;font-size:13px;">
+          <span style="color:{% if result.present %}#2f8f5b{% else %}#8e2020{% endif %};width:16px;">{% if result.present %}✓{% else %}✕{% endif %}</span>
+          <span>{{ result.description }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endif %}
+{% endwith %}
+
+{% if verifications|length > 1 %}
+  <div>
+    <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:8px;">Tentativas anteriores</div>
+    {% for verification in verifications|slice:"1:" %}
+      <div class="mono" style="display:flex;gap:10px;font-size:11px;color:var(--color-neutral-700);border-bottom:1px solid var(--color-divider);padding-bottom:6px;">
+        <span>{{ verification.submitted_at|date:"H:i" }}</span>
+        <span>{% if verification.passed %}aprovado{% else %}reprovado{% endif %}</span>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block advance_attrs %}{% if not work_permit.ppe_verified %}disabled{% endif %}{% endblock %}

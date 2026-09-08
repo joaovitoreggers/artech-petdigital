@@ -1,0 +1,22 @@
+{% extends "permits/wizard_base.html" %}
+{% block wizard_body %}
+<div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);">Classificação do risco</div>
+<div class="muted" style="font-size:13px;line-height:1.45;">
+  Marque todas as áreas de risco da intervenção. Cada norma acrescenta seus próprios campos e checklist ao formulário.
+</div>
+{% for area in risk_areas %}
+  <label class="blueprint" style="padding:11px 12px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;">
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <input type="checkbox" name="risk_areas" value="{{ area.id }}" {% if area.id in selected_ids %}checked{% endif %}
+           style="width:20px;height:20px;accent-color:var(--color-accent);flex:none;margin-top:2px;">
+    <span style="flex:1;">
+      <span style="display:flex;align-items:baseline;gap:8px;">
+        <span style="font-family:var(--font-heading);font-weight:600;font-size:16px;">{{ area.name }}</span>
+        <span class="tag tag-accent" style="font-size:10px;">{{ area.regulatory_code }}</span>
+      </span>
+      <span style="display:block;font-size:12px;color:var(--color-neutral-700);margin-top:2px;">{{ area.description }}</span>
+    </span>
+  </label>
+{% endfor %}
+{% if form.risk_areas.errors %}<div style="color:#8e2020;font-size:12px;">{{ form.risk_areas.errors }}</div>{% endif %}
+{% endblock %}

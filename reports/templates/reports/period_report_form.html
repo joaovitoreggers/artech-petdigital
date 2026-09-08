@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Relatório por período · PET Digital{% endblock %}
+{% block content %}
+<div class="container" style="max-width:560px;">
+  <h1 style="font-size:28px;">Relatório de PETs por período</h1>
+  <p class="muted" style="font-size:13px;">
+    Selecione o intervalo. O relatório traz os dados de cada PET, a duração e o monitoramento dos medidores no período,
+    e fica arquivado para consulta futura (retenção mínima de 5 anos).
+  </p>
+
+  <form method="post">
+    {% csrf_token %}
+    <div style="display:flex;gap:14px;">
+      <div class="field" style="flex:1;">
+        <label>Data inicial</label>
+        {{ form.period_start }}
+      </div>
+      <div class="field" style="flex:1;">
+        <label>Data final</label>
+        {{ form.period_end }}
+      </div>
+    </div>
+    <div class="field">
+      <label>{{ form.unit.label }}</label>
+      {{ form.unit }}
+    </div>
+    {% if form.non_field_errors %}<div style="color:#8e2020;font-size:12px;">{{ form.non_field_errors }}</div>{% endif %}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;">
+      <button type="button" class="btn btn-secondary" data-days="7" style="font-size:12px;height:30px;">últimos 7 dias</button>
+      <button type="button" class="btn btn-secondary" data-days="30" style="font-size:12px;height:30px;">últimos 30 dias</button>
+      <button type="button" class="btn btn-secondary" data-days="90" style="font-size:12px;height:30px;">últimos 90 dias</button>
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Gerar relatório</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_body %}
+<script>
+document.querySelectorAll('[data-days]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const days = parseInt(button.dataset.days, 10);
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days);
+    const iso = (d) => d.toISOString().slice(0, 10);
+    document.getElementById('id_period_start').value = iso(start);
+    document.getElementById('id_period_end').value = iso(end);
+  });
+});
+</script>
+{% endblock %}

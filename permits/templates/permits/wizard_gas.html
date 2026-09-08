@@ -1,0 +1,66 @@
+{% extends "permits/wizard_base.html" %}
+{% load core_extras %}
+{% block wizard_body %}
+{% with latest=work_permit.latest_gas_reading %}
+{% if latest %}
+<div class="gauge-grid">
+  {% for spec in gauge_specs %}
+    <div class="blueprint gauge-card"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div class="gauge-label">{{ spec.label }}</div>
+      <div class="gauge-value {% if not latest.is_within_limits %}out-of-limits{% endif %}"><span class="value">{{ latest|get_attr:spec.key }}</span><span class="unit">{{ spec.unit }}</span></div>
+      <div class="gauge-limit">{{ spec.limit_text }}</div>
+    </div>
+  {% endfor %}
+</div>
+<div style="padding:12px;background:{% if latest.is_within_limits %}#dff0e6{% else %}#f6e3e3{% endif %};color:{% if latest.is_within_limits %}#1d4d33{% else %}#8e2020{% endif %};">
+  <div style="font-family:var(--font-heading);font-weight:600;font-size:17px;">
+    {% if latest.is_within_limits %}Atmosfera dentro do limite{% else %}Atmosfera fora do limite{% endif %}
+  </div>
+</div>
+{% else %}
+<div class="muted" style="font-size:13px;">Nenhuma leitura registrada ainda.</div>
+{% endif %}
+{% endwith %}
+
+{% for field in form %}
+  <div class="field">
+    <label>{{ field.label }}</label>{{ field }}
+  </div>
+{% endfor %}
+<button type="submit" name="record_reading" value="1" formnovalidate class="btn btn-secondary btn-block" style="height:42px;">Registrar leitura no PET</button>
+
+{% if work_permit.latest_gas_reading and not work_permit.latest_gas_reading.is_within_limits %}
+<div style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#8e2020;line-height:1.45;">
+  <span style="font-family:var(--font-heading);font-weight:600;">✕</span>
+  <span>Emissão bloqueada enquanto a atmosfera estiver fora do limite. Ligue a ventilação forçada e aguarde a estabilização da leitura.</span>
+</div>
+{% endif %}
+
+{% if not work_permit.forced_ventilation_on %}
+<button type="submit" name="toggle_ventilation" value="1" formnovalidate class="btn btn-primary btn-block blueprint" style="height:44px;margin:0;">
+  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+  Ligar ventilação forçada
+</button>
+{% else %}
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-accent-700);">
+  <span style="width:7px;height:7px;border-radius:50%;background:var(--color-accent);"></span>
+  Ventilação forçada ligada desde {{ work_permit.forced_ventilation_started_at|date:"H:i" }}
+  <button type="submit" name="toggle_ventilation" value="1" formnovalidate class="btn btn-ghost" style="margin-left:auto;">Desligar</button>
+</div>
+{% endif %}
+
+{% if readings %}
+<div>
+  {% for reading in readings %}
+    <div class="mono" style="display:flex;gap:10px;font-size:11px;color:var(--color-neutral-700);border-bottom:1px solid var(--color-divider);padding-bottom:6px;">
+      <span>{{ reading.recorded_at|date:"H:i" }}</span>
+      <span>
+        {% for spec in gauge_specs %}{{ spec.label }} {{ reading|get_attr:spec.key }}{{ spec.unit }}{% if not forloop.last %} · {% endif %}{% endfor %}
+      </span>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block advance_attrs %}{% if not work_permit.latest_gas_reading or not work_permit.latest_gas_reading.is_within_limits %}disabled{% endif %}{% endblock %}

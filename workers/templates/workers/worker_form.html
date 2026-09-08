@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Cadastrar funcionário · PET Digital{% endblock %}
+{% block content %}
+<div class="container" style="max-width:680px;">
+  <h1 style="font-size:28px;">Cadastrar funcionário</h1>
+  <p class="muted" style="font-size:13px;">O cadastro gera o QR do crachá e passa a valer na validação de entrada em campo.</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="card" style="border:none;padding:0;gap:14px;">
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        <div class="field" style="flex:2;min-width:220px;">
+          <label>Nome completo</label>
+          {{ form.full_name }}
+        </div>
+        <div class="field" style="flex:1;min-width:120px;">
+          <label>Matrícula</label>
+          {{ form.registration_number }}
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:200px;">
+          <label>Função</label>
+          {{ form.job_title }}
+        </div>
+        <div class="field" style="flex:1;min-width:200px;">
+          <label>Empresa</label>
+          {{ form.company }}
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:180px;">
+          <label>Unidade</label>
+          {{ form.unit }}
+        </div>
+        <div class="field" style="flex:1;min-width:180px;">
+          <label>Vínculo</label>
+          {{ form.employment_type }}
+        </div>
+      </div>
+
+      <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);margin-top:6px;">Documentação e validade</div>
+      <div style="display:flex;flex-direction:column;">
+        {{ document_formset.management_form }}
+        {% for document_form in document_formset %}
+          <div style="display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--color-divider);">
+            <span style="flex:1;min-width:0;">
+              <span style="display:block;font-family:ui-monospace,monospace;font-size:13px;">{{ document_form.document_type_label.code }}</span>
+              <span style="display:block;font-size:11px;color:var(--color-neutral-700);">{{ document_form.document_type_label.description }}</span>
+            </span>
+            {{ document_form.document_type }}
+            {{ document_form.valid_until }}
+          </div>
+        {% endfor %}
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+        <a href="{% url 'workers:list' %}" class="btn btn-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary">Cadastrar e gerar QR</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Nova PET · PET Digital{% endblock %}
+{% block content %}
+<div class="mobile-container">
+  <form method="post" enctype="multipart/form-data" id="wizard-form">
+    {% csrf_token %}
+    <div class="wizard-header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button type="submit" name="back" value="1" formnovalidate class="btn btn-secondary" style="width:34px;height:34px;padding:0;font-size:17px;">←</button>
+        <div style="flex:1;min-width:0;">
+          <div class="wizard-title">Nova PET</div>
+          <div class="wizard-subtitle">Etapa {{ step_number }} de {{ step_total }} · {{ step_title }}</div>
+        </div>
+      </div>
+      <div class="wizard-steps">
+        {% for step in steps %}
+          <span class="{% if forloop.counter0 < step_index %}done{% elif forloop.counter0 == step_index %}current{% endif %}"></span>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="wizard-body">
+      {% block wizard_body %}{% endblock %}
+    </div>
+
+    <div class="wizard-footer">
+      <button type="submit" name="back" value="1" formnovalidate class="btn btn-secondary">Voltar</button>
+      <button type="submit" name="{% block advance_name %}advance{% endblock %}" value="1" formnovalidate class="btn btn-primary" {% block advance_attrs %}{% endblock %}>{% block advance_label %}Avançar{% endblock %}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load core_extras %}
+{% block title %}{{ work_permit.permit_number }} · PET Digital{% endblock %}
+{% block content %}
+<div class="mobile-container">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--color-divider);display:flex;align-items:center;gap:10px;">
+    <a href="{% url 'permits:home' %}" class="btn btn-secondary" style="width:34px;height:34px;padding:0;font-size:17px;display:inline-flex;align-items:center;justify-content:center;">←</a>
+    <div>
+      <div style="font-family:var(--font-heading);font-weight:600;font-size:18px;line-height:1.1;">{{ work_permit.permit_number }}</div>
+      <div style="font-size:11px;color:var(--color-neutral-700);">{{ work_permit.specific_location }}</div>
+      <div style="font-size:11px;color:var(--color-accent-700);">
+        {% for area in work_permit.risk_areas.all %}{{ area.regulatory_code }}{% if not forloop.last %} · {% endif %}{% endfor %}
+      </div>
+    </div>
+    <span class="status-badge {% if work_permit.status == 'open' %}status-ok{% elif work_permit.status == 'pending_approval' %}status-warning{% elif work_permit.status == 'incident' %}status-danger{% else %}status-neutral{% endif %}" style="margin-left:auto;">
+      {{ work_permit.get_status_display }}
+    </span>
+  </div>
+
+  <div style="padding:16px;display:flex;flex-direction:column;gap:18px;">
+    {% if work_permit.requires_gas_monitoring %}
+    <div>
+      <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:10px;">Atmosfera · última leitura</div>
+      {% with latest=work_permit.latest_gas_reading %}
+      {% if latest %}
+      <div class="gauge-grid">
+        {% for spec in gauge_specs %}
+          <div class="blueprint gauge-card"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div class="gauge-label">{{ spec.label }}</div>
+            <div class="gauge-value {% if not latest.is_within_limits %}out-of-limits{% endif %}"><span class="value">{{ latest|get_attr:spec.key }}</span><span class="unit">{{ spec.unit }}</span></div>
+          </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="muted" style="font-size:12px;">Sem leituras registradas.</div>
+      {% endif %}
+      {% endwith %}
+    </div>
+    {% endif %}
+
+    <div>
+      <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:8px;">Histórico da permissão</div>
+      {% for entry in work_permit.log_entries.all %}
+        <div class="timeline-item">
+          <div class="timeline-time">{{ entry.occurred_at|date:"d/m H:i" }}</div>
+          <div style="font-size:13px;line-height:1.4;">{{ entry.description }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if work_permit.status == 'open' %}
+  <div style="padding:12px 16px 16px;border-top:1px solid var(--color-divider);">
+    <form method="post" action="{% url 'permits:close' work_permit.pk %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary btn-block" style="height:44px;">Encerrar PET</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

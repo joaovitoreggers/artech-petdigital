@@ -1,0 +1,59 @@
+{% load static %}<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}PET Digital{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'core/css/design-system.css' %}">
+  <link rel="stylesheet" href="{% static 'core/css/app.css' %}">
+  <script src="{% static 'core/js/htmx.min.js' %}" defer></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  {% if user.is_authenticated %}
+  <div class="topnav">
+    <img class="topnav-logo" src="{% static 'core/img/artech-logo.png' %}" alt="Artech — tecnologia que transforma">
+    <div class="topnav-wordmark">PET DIGITAL</div>
+    {% if user.organization %}<div class="topnav-unit">{{ user.organization.name }}{% if user.unit %} · {{ user.unit.name }}{% endif %}</div>{% endif %}
+    <div class="topnav-links">
+      {% if user.role == 'technician' or user.role == 'admin' or user.is_superuser %}
+        <a href="{% url 'permits:home' %}">Técnico</a>
+      {% endif %}
+      {% if user.role == 'manager' or user.role == 'admin' or user.is_superuser %}
+        <a href="{% url 'dashboard:home' %}">Gestor</a>
+      {% endif %}
+      {% if user.role == 'safety_staff' or user.role == 'manager' or user.role == 'admin' or user.is_superuser %}
+        <a href="{% url 'workers:list' %}">Funcionários</a>
+      {% endif %}
+      {% if user.role == 'safety_staff' or user.role == 'manager' or user.role == 'admin' or user.is_superuser %}
+        <a href="{% url 'accounts:pin_management' %}">PINs</a>
+      {% endif %}
+      {% if user.is_superuser %}
+        <a href="{% url 'core:organization_list' %}">Empresas</a>
+      {% endif %}
+    </div>
+    <div class="topnav-user">
+      <span>{{ user.get_full_name|default:user.username }}</span>
+      <form method="post" action="{% url 'accounts:logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-secondary" style="height:30px;font-size:11px;">Sair</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if messages %}
+  <div style="max-width:1240px;margin:16px auto 0;padding:0 28px;">
+    {% for message in messages %}
+      <div class="card" style="border-color:{% if message.tags == 'error' %}#8e2020{% else %}var(--color-accent){% endif %};margin-bottom:8px;">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% block content %}{% endblock %}
+
+  {% block extra_body %}{% endblock %}
+</body>
+</html>

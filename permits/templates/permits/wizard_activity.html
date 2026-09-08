@@ -1,0 +1,63 @@
+{% extends "permits/wizard_base.html" %}
+{% load static %}
+{% block wizard_body %}
+<div style="display:flex;gap:5px;flex-wrap:wrap;">
+  {% for area in work_permit.risk_areas.all %}
+    <span class="tag tag-accent">{{ area.regulatory_code }}</span>
+  {% endfor %}
+</div>
+
+<div class="field">
+  <label>Descrição do serviço</label>
+  {{ form.description }}
+</div>
+<div class="field">
+  <label>Tipo de intervenção</label>
+  {{ form.intervention_type }}
+</div>
+<div class="field">
+  <label>Empresa executante</label>
+  {{ form.contractor_company }}
+</div>
+<div style="display:flex;gap:10px;">
+  <div class="field" style="flex:1;">
+    <label>Início previsto</label>
+    {{ form.planned_start }}
+  </div>
+  <div class="field" style="flex:1;">
+    <label>Término previsto</label>
+    {{ form.planned_end }}
+  </div>
+</div>
+<div class="field">
+  <label>Local específico</label>
+  {{ form.specific_location }}
+</div>
+
+{% regroup extra_fields by risk_area as extra_groups %}
+{% for group in extra_groups %}
+  <div style="display:flex;flex-direction:column;gap:14px;padding-top:8px;">
+    <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);">{{ group.grouper.name }}</div>
+    {% for field in group.list %}
+      <div class="field">
+        <label>{{ field.label }}</label>
+        <input class="input" type="text" name="extra_{{ field.pk }}" value="{{ field.value }}">
+      </div>
+    {% endfor %}
+  </div>
+{% endfor %}
+
+<div class="blueprint" style="padding:12px;margin-top:4px;">
+  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+  <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);">Georreferenciamento da frente</div>
+  <div id="gps-status" class="mono" style="font-size:12px;margin-top:8px;color:var(--color-neutral-700);">obtendo localização…</div>
+  {{ form.latitude }}
+  {{ form.longitude }}
+  {{ form.location_accuracy_meters }}
+</div>
+{% endblock %}
+
+{% block extra_body %}
+<script src="{% static 'permits/js/wizard.js' %}"></script>
+<script>document.addEventListener('DOMContentLoaded', () => PetWizard.captureLocation('gps-status'));</script>
+{% endblock %}

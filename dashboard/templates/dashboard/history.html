@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Histórico · PET Digital{% endblock %}
+{% block content %}
+<div class="container">
+  <h1 style="font-size:32px;">Histórico de PETs</h1>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;">
+    <a href="?" class="tag {% if not selected_risk_area %}tag-accent{% else %}tag-outline{% endif %}">todas</a>
+    {% for area in risk_areas %}
+      <a href="?risk_area={{ area.slug }}" class="tag {% if selected_risk_area == area.slug %}tag-accent{% else %}tag-outline{% endif %}">{{ area.name }}</a>
+    {% endfor %}
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr><th>PET</th><th>Data</th><th>Local / unidade</th><th>Áreas de risco</th><th>Equipe</th><th>Situação</th></tr>
+    </thead>
+    <tbody>
+      {% for permit in permits %}
+      <tr>
+        <td class="mono" style="white-space:nowrap;">{{ permit.permit_number }}</td>
+        <td class="mono" style="white-space:nowrap;">{{ permit.created_at|date:"d/m/Y" }}</td>
+        <td>{{ permit.specific_location }}<span style="display:block;font-size:11px;color:var(--color-neutral-600);">{{ permit.unit.name }}</span></td>
+        <td style="font-size:13px;">
+          {% for area in permit.risk_areas.all %}{{ area.name }}{% if not forloop.last %} + {% endif %}{% endfor %}
+          <span class="mono" style="display:block;font-size:11px;color:var(--color-accent-700);">
+            {% for area in permit.risk_areas.all %}{{ area.regulatory_code }}{% if not forloop.last %} · {% endif %}{% endfor %}
+          </span>
+        </td>
+        <td>{{ permit.team_members.count }}</td>
+        <td>
+          <span class="status-badge {% if permit.status == 'open' %}status-ok{% elif permit.status == 'pending_approval' %}status-warning{% elif permit.status == 'incident' %}status-danger{% else %}status-neutral{% endif %}">
+            {{ permit.get_status_display }}
+          </span>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted" style="padding:24px 0;">Nenhuma PET encontrada.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
