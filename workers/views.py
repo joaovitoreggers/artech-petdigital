@@ -4,7 +4,7 @@ import qrcode
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 from django.views.generic import ListView
@@ -12,6 +12,7 @@ from django.views.generic import ListView
 from core.mixins import SafetyStaffRequiredMixin
 from core.models import Unit
 
+from . import document_extraction
 from .forms import WorkerForm, build_document_formset
 from .models import Worker
 
@@ -94,8 +95,49 @@ class WorkerCreateView(LoginRequiredMixin, View):
         )
 
 
+class DocumentValidityExtractView(LoginRequiredMixin, View):
+    """AJAX helper for the worker registration form: reads a candidate
+    expiry date off a photographed document so whoever is registering the
+    worker can review/correct it instead of typing it from scratch. Never
+    saves anything by itself — the human still submits the form."""
+
+    def post(self, request):
+        photo = request.FILES.get("photo")
+        if not photo:
+            return JsonResponse({"success": False, "error": "Nenhuma foto enviada."}, status=400)
+
+        document_label = request.POST.get("document_label", "documento").strip() or "documento"
+        try:
+            result = document_extraction.extract_document_validity(photo.read(), document_label)
+        except document_extraction.DocumentExtractionError as exc:
+            return JsonResponse({"success": False, "error": str(exc)}, status=502)
+
+        if not result["valid_until"]:
+            return JsonResponse(
+                {"success": False, "error": result["notes"] or "Não foi possível ler a validade nessa foto."}
+            )
+        return JsonResponse(
+            {
+                "success": True,
+                "valid_until": result["valid_until"].isoformat(),
+                "confidence": result["confidence"],
+                "notes": result["notes"],
+            }
+        )
+
+
 class WorkerBadgeView(LoginRequiredMixin, View):
-    """Render the worker's QR badge as a PNG, scanned in the field wizard."""
+    """Printable 'crachá' page for one worker — name/role/unit plus the QR
+    code that gets scanned in the field wizard's team-assembly step."""
+
+    def get(self, request, pk):
+        worker = get_object_or_404(Worker, pk=pk, organization=request.user.organization)
+        return render(request, "workers/worker_badge.html", {"worker": worker})
+
+
+class WorkerBadgeQRView(LoginRequiredMixin, View):
+    """The worker's QR code alone, as a PNG — embedded as an <img> in the
+    printable badge page above."""
 
     def get(self, request, pk):
         worker = get_object_or_404(Worker, pk=pk, organization=request.user.organization)

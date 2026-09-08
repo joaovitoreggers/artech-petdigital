@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Assistente de NR · PET Digital{% endblock %}
+{% block content %}
+<div class="container" style="max-width:720px;">
+  <h1 style="font-size:28px;">Assistente de NR</h1>
+  <p class="muted" style="font-size:13px;max-width:560px;">
+    Pergunte sobre as Normas Regulamentadoras (NRs) e sobre as áreas de risco, checklists, EPIs
+    obrigatórios e documentos cadastrados para {{ request.user.organization.name }}. O assistente prioriza o que
+    esta empresa exige na prática e complementa com conhecimento geral das NRs quando a pergunta for
+    sobre a norma em si.
+  </p>
+
+  <div id="chat-log" style="display:flex;flex-direction:column;gap:12px;margin:20px 0;min-height:120px;"></div>
+
+  <form id="chat-form" style="display:flex;gap:8px;">
+    <input type="text" id="chat-input" class="input" style="flex:1;" placeholder="ex.: quais EPIs preciso pra entrar em espaço confinado?" autocomplete="off">
+    <button type="submit" class="btn btn-primary" id="chat-submit">Perguntar</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  var log = document.getElementById("chat-log");
+  var form = document.getElementById("chat-form");
+  var input = document.getElementById("chat-input");
+  var submitButton = document.getElementById("chat-submit");
+  var csrftoken = "{{ csrf_token }}";
+  var history = [];
+
+  function addBubble(role, text) {
+    var bubble = document.createElement("div");
+    var isUser = role === "user";
+    bubble.style.cssText =
+      "max-width:80%;padding:10px 14px;font-size:13px;line-height:1.5;white-space:pre-wrap;" +
+      (isUser
+        ? "align-self:flex-end;background:var(--color-accent);color:#fff;"
+        : "align-self:flex-start;background:var(--color-neutral-100);color:var(--color-neutral-900);border:1px solid var(--color-divider);");
+    bubble.textContent = text;
+    log.appendChild(bubble);
+    log.scrollTop = log.scrollHeight;
+    return bubble;
+  }
+
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var question = input.value.trim();
+    if (!question) return;
+
+    addBubble("user", question);
+    history.push({role: "user", content: question});
+    input.value = "";
+    submitButton.disabled = true;
+    var pending = addBubble("assistant", "consultando…");
+
+    var formData = new FormData();
+    formData.append("question", question);
+    formData.append("history", JSON.stringify(history.slice(0, -1)));
+
+    fetch("{% url 'core:nr_assistant_ask' %}", {
+      method: "POST",
+      headers: {"X-CSRFToken": csrftoken},
+      body: formData,
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        submitButton.disabled = false;
+        if (data.success) {
+          pending.textContent = data.answer;
+          history.push({role: "assistant", content: data.answer});
+        } else {
+          pending.textContent = data.error || "não foi possível responder";
+          pending.style.color = "#8e2020";
+        }
+      })
+      .catch(function () {
+        submitButton.disabled = false;
+        pending.textContent = "erro ao consultar o assistente";
+        pending.style.color = "#8e2020";
+      });
+  });
+})();
+</script>
+{% endblock %}

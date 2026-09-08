@@ -43,12 +43,25 @@
       <div style="display:flex;flex-direction:column;">
         {{ document_formset.management_form }}
         {% for document_form in document_formset %}
-          <div style="display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--color-divider);">
-            <span style="flex:1;min-width:0;">
+          <div class="doc-row" style="display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--color-divider);flex-wrap:wrap;">
+            <span style="flex:1;min-width:160px;">
               <span style="display:block;font-family:ui-monospace,monospace;font-size:13px;">{{ document_form.document_type_label.code }}</span>
               <span style="display:block;font-size:11px;color:var(--color-neutral-700);">{{ document_form.document_type_label.description }}</span>
             </span>
             {{ document_form.document_type }}
+            <label class="btn btn-secondary" style="font-size:11px;padding:0 10px;height:32px;display:inline-flex;align-items:center;cursor:pointer;white-space:nowrap;">
+              📷 ler validade por foto
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                class="doc-extract-input"
+                data-label="{{ document_form.document_type_label.description|default:document_form.document_type_label.code }}"
+                data-target="{{ document_form.valid_until.id_for_label }}"
+                style="display:none;"
+              >
+            </label>
+            <span class="doc-extract-status muted" style="font-size:11px;min-width:120px;"></span>
             {{ document_form.valid_until }}
           </div>
         {% endfor %}
@@ -61,4 +74,42 @@
     </div>
   </form>
 </div>
+<script>
+(function () {
+  var csrftoken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+  document.querySelectorAll(".doc-extract-input").forEach(function (input) {
+    input.addEventListener("change", function () {
+      var file = input.files[0];
+      if (!file) return;
+      var statusEl = input.closest(".doc-row").querySelector(".doc-extract-status");
+      var targetInput = document.getElementById(input.dataset.target);
+      statusEl.style.color = "";
+      statusEl.textContent = "lendo com IA…";
+      var formData = new FormData();
+      formData.append("photo", file);
+      formData.append("document_label", input.dataset.label);
+      fetch("{% url 'workers:extract_document_validity' %}", {
+        method: "POST",
+        headers: {"X-CSRFToken": csrftoken},
+        body: formData,
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.success) {
+            targetInput.value = data.valid_until;
+            statusEl.textContent = "✓ " + data.valid_until + " — confira antes de salvar";
+            statusEl.style.color = "#2f8f5b";
+          } else {
+            statusEl.textContent = data.error || "não foi possível ler a data";
+            statusEl.style.color = "#8e2020";
+          }
+        })
+        .catch(function () {
+          statusEl.textContent = "erro ao consultar IA";
+          statusEl.style.color = "#8e2020";
+        });
+    });
+  });
+})();
+</script>
 {% endblock %}

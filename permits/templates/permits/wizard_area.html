@@ -4,8 +4,20 @@
 <div class="muted" style="font-size:13px;line-height:1.45;">
   Marque todas as áreas de risco da intervenção. Cada norma acrescenta seus próprios campos e checklist ao formulário.
 </div>
+
+<div class="blueprint" style="padding:11px 12px;display:flex;flex-direction:column;gap:8px;">
+  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+  <label style="font-size:12px;font-weight:600;">Descreva rapidamente o serviço — a IA sugere as áreas de risco</label>
+  <textarea id="area-suggest-description" class="input" placeholder="ex.: solda dentro do tanque de amônia, com içamento de peça de 200kg"
+            style="min-height:56px;"></textarea>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button type="button" id="area-suggest-button" class="btn btn-secondary" style="font-size:12px;">✨ Sugerir com IA</button>
+    <span id="area-suggest-status" class="muted" style="font-size:12px;"></span>
+  </div>
+</div>
+
 {% for area in risk_areas %}
-  <label class="blueprint" style="padding:11px 12px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;">
+  <label class="blueprint area-option" data-area-id="{{ area.id }}" style="padding:11px 12px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;">
     <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
     <input type="checkbox" name="risk_areas" value="{{ area.id }}" {% if area.id in selected_ids %}checked{% endif %}
            style="width:20px;height:20px;accent-color:var(--color-accent);flex:none;margin-top:2px;">
@@ -19,4 +31,53 @@
   </label>
 {% endfor %}
 {% if form.risk_areas.errors %}<div style="color:#8e2020;font-size:12px;">{{ form.risk_areas.errors }}</div>{% endif %}
+
+<script>
+(function () {
+  var button = document.getElementById("area-suggest-button");
+  var statusEl = document.getElementById("area-suggest-status");
+  var csrftoken = document.querySelector("#wizard-form [name=csrfmiddlewaretoken]").value;
+  button.addEventListener("click", function () {
+    var description = document.getElementById("area-suggest-description").value.trim();
+    if (!description) {
+      statusEl.textContent = "descreva a atividade primeiro";
+      statusEl.style.color = "#8e2020";
+      return;
+    }
+    statusEl.style.color = "";
+    statusEl.textContent = "consultando IA…";
+    fetch("{% url 'permits:wizard_area_suggest' work_permit.pk %}", {
+      method: "POST",
+      headers: {"X-CSRFToken": csrftoken, "Content-Type": "application/x-www-form-urlencoded"},
+      body: "description=" + encodeURIComponent(description),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data.success) {
+          statusEl.textContent = data.error || "não foi possível sugerir";
+          statusEl.style.color = "#8e2020";
+          return;
+        }
+        if (data.suggested_ids.length === 0) {
+          statusEl.textContent = "IA não identificou uma área de risco clara nessa descrição";
+          statusEl.style.color = "#8e2020";
+          return;
+        }
+        data.suggested_ids.forEach(function (id) {
+          var option = document.querySelector('.area-option[data-area-id="' + id + '"]');
+          if (option) {
+            option.querySelector('input[type=checkbox]').checked = true;
+            option.style.outline = "2px solid var(--color-accent)";
+          }
+        });
+        statusEl.textContent = "✓ " + data.reasoning + " — confira as marcações antes de avançar";
+        statusEl.style.color = "#2f8f5b";
+      })
+      .catch(function () {
+        statusEl.textContent = "erro ao consultar IA";
+        statusEl.style.color = "#8e2020";
+      });
+  });
+})();
+</script>
 {% endblock %}
