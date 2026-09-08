@@ -48,6 +48,14 @@ class CredentialManagerRequiredMixin(RoleRequiredMixin):
     allowed_roles = ("safety_staff", "manager", "admin")
 
 
+class AlertTriggerRequiredMixin(RoleRequiredMixin):
+    """The standalone 'botão de alerta' — whoever notices danger first in
+    the field can sound it, not just a manager at the dashboard. Silencing
+    or ending an active alarm stays manager/admin-only (ManagerRequiredMixin)."""
+
+    allowed_roles = ("technician", "manager")
+
+
 class SuperuserRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     """Platform-level screens (registering a new tenant company) — not a
     company-level 'admin' role, which stays scoped to its own organization."""
