@@ -82,10 +82,39 @@ AUTHENTICATION_BACKENDS = [
 ]
 PIN_HASH_PEPPER = config("PIN_HASH_PEPPER")
 
-# Used by permits.ppe_verification to check a field photo against a
-# permit's mandatory PPE list (see the "Verificação de EPI" wizard step).
+# Fernet key backing every reversible-encrypted field in the app (see
+# core.encrypted_fields.EncryptedCharField and accounts.pin.encrypt_pin) —
+# a worker's current PIN shown to a manager, a physical-alert endpoint's
+# webhook secret, and so on. Separate from PIN_HASH_PEPPER, which only
+# ever produces a one-way hash used for login.
+FIELD_ENCRYPTION_KEY = config("FIELD_ENCRYPTION_KEY")
+
+# Argon2id first (see accounts.pin for why): applies to Django's own
+# username/password login (/admin/, ModelBackend). PBKDF2/BCrypt stay
+# listed so any pre-existing password hash still verifies — Django
+# transparently rehashes it to Argon2id the next time that user logs in.
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+]
+
+# Shared OpenAI key for every AI-assisted feature in the app; each feature
+# picks its own model below so they can be tuned/priced independently.
 OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
+
+# permits.ppe_verification: checks a field photo against a permit's
+# mandatory PPE list (the "Verificação de EPI" wizard step).
 OPENAI_PPE_VERIFICATION_MODEL = config("OPENAI_PPE_VERIFICATION_MODEL", default="gpt-4o-mini")
+
+# workers.document_extraction: reads a certification's expiry date from a
+# photo to pre-fill (not auto-submit) WorkerDocument.valid_until.
+OPENAI_DOCUMENT_MODEL = config("OPENAI_DOCUMENT_MODEL", default="gpt-4o-mini")
+
+# Text-only (no vision) AI features: permits.risk_suggestion,
+# reports' period-summary narrative, and the NR chat assistant.
+OPENAI_TEXT_MODEL = config("OPENAI_TEXT_MODEL", default="gpt-4o-mini")
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

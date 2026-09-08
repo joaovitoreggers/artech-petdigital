@@ -40,7 +40,7 @@
   <table class="table">
     <thead>
       <tr>
-        <th style="width:24%">Funcionário</th><th>Vínculo</th><th>Unidade</th><th style="width:34%">Normas e vencimentos</th><th>Situação</th>
+        <th style="width:24%">Funcionário</th><th>Vínculo</th><th>Unidade</th><th style="width:34%">Normas e vencimentos</th><th>Situação</th><th></th>
       </tr>
     </thead>
     <tbody>
@@ -79,9 +79,10 @@
             {% if worker.overall_status == 'valid' %}em dia{% elif worker.overall_status == 'expiring_soon' %}vencendo{% elif worker.overall_status == 'expired' %}vencido{% else %}sem docs.{% endif %}
           </span>
         </td>
+        <td><a href="{% url 'workers:badge' worker.pk %}" class="btn btn-secondary" style="font-size:12px;white-space:nowrap;">Crachá / QR</a></td>
       </tr>
       {% empty %}
-      <tr><td colspan="5" style="padding:28px 0;font-size:13px;color:var(--color-neutral-700);">Nenhum funcionário nesse filtro.</td></tr>
+      <tr><td colspan="6" style="padding:28px 0;font-size:13px;color:var(--color-neutral-700);">Nenhum funcionário nesse filtro.</td></tr>
       {% endfor %}
     </tbody>
   </table>

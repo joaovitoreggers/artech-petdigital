@@ -1,8 +1,12 @@
+import json
+
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views import View
-from django.views.generic import ListView
+from django.views.generic import ListView, TemplateView
 
+from . import nr_assistant
 from .forms import OrganizationOnboardingForm
 from .mixins import SuperuserRequiredMixin
 from .models import Organization
@@ -55,3 +59,37 @@ class OrganizationCreateView(SuperuserRequiredMixin, View):
             "core/organization_created.html",
             {"organization": organization, "admin_user": admin_user, "raw_pin": raw_pin},
         )
+
+
+class NRAssistantView(LoginRequiredMixin, TemplateView):
+    """Chat page: 'Assistente de NR' — answers grounded in the technician's
+    own organization content (see core.nr_assistant)."""
+
+    template_name = "core/nr_assistant.html"
+
+
+class NRAssistantAskView(LoginRequiredMixin, View):
+    """AJAX endpoint backing the chat page. History is client-held (sent
+    back with each request) — no server-side conversation storage."""
+
+    def post(self, request):
+        question = request.POST.get("question", "").strip()
+        if not question:
+            return JsonResponse({"success": False, "error": "Digite uma pergunta."}, status=400)
+        if request.user.organization is None:
+            return JsonResponse(
+                {"success": False, "error": "Seu usuário não está associado a uma empresa."}, status=400
+            )
+
+        try:
+            history = json.loads(request.POST.get("history") or "[]")
+            if not isinstance(history, list):
+                history = []
+        except (json.JSONDecodeError, TypeError):
+            history = []
+
+        try:
+            answer = nr_assistant.answer_question(request.user.organization, question, history=history)
+        except nr_assistant.AssistantError as exc:
+            return JsonResponse({"success": False, "error": str(exc)}, status=502)
+        return JsonResponse({"success": True, "answer": answer})

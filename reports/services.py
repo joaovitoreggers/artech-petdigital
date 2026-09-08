@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 from django.db.models import Avg, Count, Max, Min, Q
@@ -8,6 +9,10 @@ from weasyprint import HTML
 from dashboard.models import EvacuationEvent
 from permits.constants import GAS_LIMITS, gas_limit_display
 from permits.models import GasReading, WorkPermit
+
+from . import ai_summary
+
+logger = logging.getLogger(__name__)
 
 
 def _permits_in_period(organization, period_start, period_end, unit):
@@ -104,6 +109,14 @@ def _evacuations_in_period(organization, period_start, period_end, unit):
     return rows
 
 
+def _risk_area_frequency(permits):
+    frequency = {}
+    for permit in permits:
+        for area in permit.risk_areas.all():
+            frequency[area.regulatory_code] = frequency.get(area.regulatory_code, 0) + 1
+    return frequency
+
+
 def build_report_context(organization, period_start, period_end, unit, generated_by):
     permits = list(_permits_in_period(organization, period_start, period_end, unit))
     monitored = [
@@ -115,6 +128,13 @@ def build_report_context(organization, period_start, period_end, unit, generated
     compliance_total = total_readings.count()
     compliance_ok = total_readings.filter(is_within_limits=True).count()
     evacuations = _evacuations_in_period(organization, period_start, period_end, unit)
+    summary = {
+        "total_permits": len(permits),
+        "closed": sum(1 for p in permits if p.status == WorkPermit.Status.CLOSED),
+        "incidents": sum(1 for p in permits if p.status == WorkPermit.Status.INCIDENT),
+        "compliance": round((compliance_ok / compliance_total) * 100, 1) if compliance_total else 100.0,
+        "evacuations": len(evacuations),
+    }
     return {
         "organization": organization,
         "period_start": period_start,
@@ -125,16 +145,33 @@ def build_report_context(organization, period_start, period_end, unit, generated
         "permits": permits,
         "monitored": monitored,
         "evacuations": evacuations,
-        "summary": {
-            "total_permits": len(permits),
-            "closed": sum(1 for p in permits if p.status == WorkPermit.Status.CLOSED),
-            "incidents": sum(1 for p in permits if p.status == WorkPermit.Status.INCIDENT),
-            "compliance": round((compliance_ok / compliance_total) * 100, 1) if compliance_total else 100.0,
-            "evacuations": len(evacuations),
-        },
+        "summary": summary,
         "daily_condition": _daily_condition(period_start, period_end, permits),
         "gas_limits": GAS_LIMITS,
+        "ai_executive_summary": _build_ai_executive_summary(
+            organization, period_start, period_end, summary, evacuations, permits
+        ),
     }
+
+
+def _build_ai_executive_summary(organization, period_start, period_end, summary, evacuations, permits):
+    report_data = {
+        "summary": summary,
+        "risk_area_frequency": _risk_area_frequency(permits),
+        "evacuations": [
+            {
+                "source": row["event"].get_source_display(),
+                "status": row["status"],
+                "duration_minutes": row["duration_minutes"],
+            }
+            for row in evacuations
+        ],
+    }
+    try:
+        return ai_summary.generate_executive_summary(organization, period_start, period_end, report_data)
+    except ai_summary.ExecutiveSummaryError as exc:
+        logger.warning("Resumo executivo por IA indisponível para o relatório: %s", exc)
+        return None
 
 
 def render_report_pdf(context):

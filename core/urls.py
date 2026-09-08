@@ -8,4 +8,6 @@ urlpatterns = [
     path("", views.HomeRedirectView.as_view(), name="home"),
     path("empresas/", views.OrganizationListView.as_view(), name="organization_list"),
     path("empresas/nova/", views.OrganizationCreateView.as_view(), name="organization_create"),
+    path("assistente/", views.NRAssistantView.as_view(), name="nr_assistant"),
+    path("assistente/perguntar/", views.NRAssistantAskView.as_view(), name="nr_assistant_ask"),
 ]

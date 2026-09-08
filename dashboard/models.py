@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 
+from core.encrypted_fields import EncryptedCharField
 from core.models import Organization, Unit
 
 
@@ -74,9 +75,9 @@ class PhysicalAlertEndpoint(models.Model):
     )
     name = models.CharField("nome do gateway", max_length=100)
     webhook_url = models.URLField("URL do webhook")
-    secret_token = models.CharField(
+    secret_token = EncryptedCharField(
         "token secreto",
-        max_length=64,
+        max_length=500,
         blank=True,
         help_text="Enviado no header X-PET-Digital-Signature (HMAC-SHA256 do corpo) para o gateway validar a origem.",
     )

@@ -11,6 +11,7 @@ urlpatterns = [
     path("<int:pk>/emitida/", views.PermitIssuedView.as_view(), name="issued"),
     path("<int:pk>/encerrar/", views.PermitCloseView.as_view(), name="close"),
     path("<int:pk>/passo/area/", views.WizardAreaView.as_view(), name="wizard_area"),
+    path("<int:pk>/passo/area/sugerir/", views.WizardAreaSuggestView.as_view(), name="wizard_area_suggest"),
     path("<int:pk>/passo/atividade/", views.WizardActivityView.as_view(), name="wizard_activity"),
     path("<int:pk>/passo/gases/", views.WizardGasView.as_view(), name="wizard_gas"),
     path("<int:pk>/passo/equipe/", views.WizardTeamView.as_view(), name="wizard_team"),

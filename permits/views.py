@@ -3,6 +3,7 @@ import base64
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.files.base import ContentFile
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views import View
@@ -12,7 +13,7 @@ from core.mixins import ManagerRequiredMixin, TechnicianRequiredMixin
 from core.models import RiskArea
 from workers.models import Worker
 
-from . import ppe_verification, services, wizard
+from . import gas_anomaly, ppe_verification, priority_score, risk_suggestion, services, wizard
 from .constants import CONFINED_SPACE_GENERAL_GUIDANCE, gas_measurement_specs
 from .forms import GasReadingForm, PermitActivityForm, RiskAreaSelectionForm
 from .models import (
@@ -151,6 +152,28 @@ class WizardAreaView(DraftPermitMixin, View):
         PermitFieldValue.objects.bulk_create(new_rows)
 
 
+class WizardAreaSuggestView(DraftPermitMixin, View):
+    """AJAX helper for the 'Área de risco' step: given a free-text
+    description of the activity, returns which risk areas the AI thinks
+    apply so the technician starts from pre-checked boxes instead of a
+    blank list — still reviewed and confirmed before advancing."""
+
+    def post(self, request, pk):
+        description = request.POST.get("description", "").strip()
+        if not description:
+            return JsonResponse(
+                {"success": False, "error": "Descreva a atividade antes de pedir a sugestão."}, status=400
+            )
+        risk_areas = RiskArea.objects.filter(organization=self.work_permit.organization)
+        try:
+            result = risk_suggestion.suggest_risk_areas(description, risk_areas)
+        except risk_suggestion.RiskSuggestionError as exc:
+            return JsonResponse({"success": False, "error": str(exc)}, status=502)
+        return JsonResponse(
+            {"success": True, "suggested_ids": result["suggested_ids"], "reasoning": result["reasoning"]}
+        )
+
+
 class WizardActivityView(DraftPermitMixin, View):
     step_slug = "activity"
 
@@ -208,6 +231,8 @@ class WizardGasView(DraftPermitMixin, View):
                 reading.work_permit = self.work_permit
                 reading.recorded_by = request.user
                 reading.save()
+                for anomaly in gas_anomaly.detect_anomalies(self.work_permit, reading):
+                    messages.warning(request, f"⚠ {anomaly.message}")
                 return redirect("permits:wizard_gas", pk=pk)
             return self._render(request, form, required)
         if "advance" in request.POST:
@@ -544,9 +569,10 @@ class ApprovalQueueView(ManagerRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["permits"] = WorkPermit.objects.filter(
+        pending = WorkPermit.objects.filter(
             organization=self.request.user.organization, status=WorkPermit.Status.PENDING_APPROVAL
-        ).select_related("unit", "requested_by")
+        ).select_related("unit", "requested_by").prefetch_related("risk_areas", "gas_readings")
+        context["permits"] = priority_score.score_queue(pending)
         return context
 
 

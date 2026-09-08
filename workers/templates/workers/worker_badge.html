@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Crachá · {{ worker.full_name }} · PET Digital{% endblock %}
+{% block extra_head %}
+<style>
+  @media print {
+    .topnav, .no-print { display: none !important; }
+    body { background: #fff; }
+    .container { max-width: none !important; padding: 0 !important; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container" style="max-width:420px;">
+  <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <a href="{% url 'workers:list' %}" class="btn btn-secondary">← Funcionários</a>
+    <button onclick="window.print()" class="btn btn-primary">🖨 Imprimir crachá</button>
+  </div>
+
+  <div class="blueprint" style="padding:28px 24px;text-align:center;">
+    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-accent-700);">
+      {{ worker.organization.name }} · {{ worker.unit.name }}
+    </div>
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:22px;margin-top:8px;">{{ worker.full_name }}</div>
+    <div style="font-size:13px;color:var(--color-neutral-700);margin-top:2px;">{{ worker.job_title }}</div>
+    <div style="font-size:12px;color:var(--color-neutral-600);margin-top:2px;">{{ worker.company }} · {{ worker.get_employment_type_display }}</div>
+
+    <img src="{% url 'workers:badge_qr' worker.pk %}" alt="QR do crachá de {{ worker.full_name }}" style="width:190px;height:190px;margin:20px auto;display:block;">
+
+    <div class="mono" style="font-size:12px;letter-spacing:0.06em;">MAT. {{ worker.registration_number }}</div>
+  </div>
+
+  <p class="muted no-print" style="font-size:12px;margin-top:16px;line-height:1.5;">
+    Este QR é lido na etapa "Crachá e permissão" ao montar a equipe de uma PET em campo — imprima e
+    entregue ao funcionário, ou plastifique para reutilização.
+  </p>
+</div>
+{% endblock %}

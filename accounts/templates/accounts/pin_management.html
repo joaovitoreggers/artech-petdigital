@@ -23,7 +23,13 @@
         <td style="font-size:13px;">{{ account.unit.name|default:"—" }}</td>
         <td>
           {% if account.has_pin %}
-            <span class="status-badge status-ok">PIN definido</span>
+            {% if account.visible_pin %}
+              <span class="mono pin-reveal" data-pin="{{ account.visible_pin }}" style="font-size:15px;letter-spacing:0.08em;">••••••</span>
+              <button type="button" class="pin-reveal-toggle" data-label-show="mostrar" data-label-hide="ocultar" style="border:0;background:none;padding:0;margin-left:6px;font-size:11px;color:var(--color-accent-700);cursor:pointer;text-decoration:underline;">mostrar</button>
+            {% else %}
+              <span class="status-badge status-ok">PIN definido</span>
+              <span class="muted" style="display:block;font-size:11px;margin-top:2px;">PIN gerado antes deste recurso — renove para poder visualizá-lo</span>
+            {% endif %}
             <span class="mono muted" style="display:block;font-size:11px;margin-top:2px;">desde {{ account.pin_set_at|date:"d/m/Y H:i" }}</span>
           {% else %}
             <span class="status-badge status-danger">sem PIN</span>
@@ -40,4 +46,14 @@
     </tbody>
   </table>
 </div>
+<script>
+  document.querySelectorAll(".pin-reveal-toggle").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var pinSpan = button.previousElementSibling;
+      var revealed = pinSpan.textContent === pinSpan.dataset.pin;
+      pinSpan.textContent = revealed ? "••••••" : pinSpan.dataset.pin;
+      button.textContent = revealed ? button.dataset.labelShow : button.dataset.labelHide;
+    });
+  });
+</script>
 {% endblock %}

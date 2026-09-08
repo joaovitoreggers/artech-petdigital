@@ -31,6 +31,9 @@
       {% if user.is_superuser %}
         <a href="{% url 'core:organization_list' %}">Empresas</a>
       {% endif %}
+      {% if user.organization %}
+        <a href="{% url 'core:nr_assistant' %}">Assistente de NR</a>
+      {% endif %}
     </div>
     <div class="topnav-user">
       {% if user.role == 'technician' or user.role == 'manager' or user.role == 'admin' or user.is_superuser %}
@@ -52,7 +55,7 @@
   {% if messages %}
   <div style="max-width:1240px;margin:16px auto 0;padding:0 28px;">
     {% for message in messages %}
-      <div class="card" style="border-color:{% if message.tags == 'error' %}#8e2020{% else %}var(--color-accent){% endif %};margin-bottom:8px;">
+      <div class="card" style="border-color:{% if message.tags == 'error' %}#8e2020{% elif message.tags == 'warning' %}#b8860b{% else %}var(--color-accent){% endif %};margin-bottom:8px;">
         {{ message }}
       </div>
     {% endfor %}

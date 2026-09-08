@@ -29,6 +29,8 @@
   .signatures { display: flex; gap: 40px; margin-top: 50px; padding-top: 10px; }
   .signatures > div { flex: 1; border-top: 1px solid #1d1f20; padding-top: 6px; }
   .footnote { font-family: monospace; font-size: 8px; color: #7a7a7d; margin-top: 20px; line-height: 1.7; }
+  .ai-summary { background: #f4f6fa; border-left: 3px solid #597ea3; padding: 10px 12px; margin-top: 16px; font-size: 11px; line-height: 1.55; }
+  .ai-summary .kicker { margin-bottom: 4px; }
 </style>
 </head>
 <body>
@@ -54,6 +56,13 @@
     <div><div class="kicker">Conformidade atmosférica</div><div class="summary-value">{{ summary.compliance }}%</div></div>
     <div><div class="kicker">Alertas/evacuações</div><div class="summary-value{% if summary.evacuations %} danger{% endif %}">{{ summary.evacuations }}</div></div>
   </div>
+
+  {% if ai_executive_summary %}
+  <div class="ai-summary">
+    <div class="kicker">Resumo executivo · gerado por IA a partir dos dados deste relatório</div>
+    {{ ai_executive_summary }}
+  </div>
+  {% endif %}
 
   <h4>1. Permissões emitidas no período</h4>
   <table>

@@ -36,6 +36,7 @@ class User(AbstractUser):
     registration_number = models.CharField("matrícula", max_length=20, blank=True)
 
     pin_hash = models.CharField(max_length=64, unique=True, null=True, blank=True, editable=False)
+    pin_encrypted = models.CharField(max_length=255, null=True, blank=True, editable=False)
     pin_set_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     def __str__(self):
@@ -48,9 +49,8 @@ class User(AbstractUser):
     def set_pin(self, raw_pin=None):
         """Hash and store a login PIN, generating one if not given.
 
-        Returns the plaintext PIN — the only moment it exists outside the
-        hash, since the hash can't be reversed. Callers must show/hand it
-        to the user right away; it's never retrievable again afterwards.
+        Returns the plaintext PIN. The PIN is also kept in `pin_encrypted`
+        so a manager/SESMT can view it later from the PIN management screen.
         """
         from django.utils import timezone
 
@@ -60,9 +60,17 @@ class User(AbstractUser):
             raw_pin = pin_utils.generate_raw_pin()
             candidate_hash = pin_utils.hash_pin(raw_pin)
         self.pin_hash = candidate_hash
+        self.pin_encrypted = pin_utils.encrypt_pin(raw_pin)
         self.pin_set_at = timezone.now()
-        self.save(update_fields=["pin_hash", "pin_set_at"])
+        self.save(update_fields=["pin_hash", "pin_encrypted", "pin_set_at"])
         return raw_pin
+
+    @property
+    def visible_pin(self):
+        """The current raw PIN, for managers/SESMT to look up — None for a
+        PIN set before this field existed (it only knows the hash, which
+        can't be reversed) or if PIN_ENCRYPTION_KEY was since rotated."""
+        return pin_utils.decrypt_pin(self.pin_encrypted)
 
     @classmethod
     def get_by_pin(cls, raw_pin):
