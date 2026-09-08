@@ -1,17 +1,21 @@
 from datetime import timedelta
 
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Q
 from django.db.models.functions import TruncDate
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
-from core.mixins import ManagerRequiredMixin
+from core.mixins import AlertTriggerRequiredMixin, ManagerRequiredMixin
 from core.models import RiskArea
 from permits.models import GasReading, WorkPermit
 
+from . import webhooks
 from .models import EvacuationEvent
 
 CHART_WINDOW_DAYS = 30
@@ -46,12 +50,20 @@ class DashboardHomeView(ManagerRequiredMixin, TemplateView):
         ).first()
         alarmed_permit = next((p for p in open_permits if p.is_in_atmospheric_alarm), None)
 
+        recent_evacuations = EvacuationEvent.objects.filter(
+            organization=user.organization
+        ).select_related("unit", "triggered_by")
+        if user.unit:
+            recent_evacuations = recent_evacuations.filter(unit=user.unit)
+        recent_evacuations = recent_evacuations.order_by("-triggered_at")[:10]
+
         context.update(
             {
                 "kpis": self._kpis(permits, window_start),
                 "open_permits": open_permits,
                 "alarmed_permit": alarmed_permit,
                 "active_evacuation": active_evacuation,
+                "recent_evacuations": recent_evacuations,
                 "pending_approval_count": permits.filter(
                     status=WorkPermit.Status.PENDING_APPROVAL
                 ).count(),
@@ -131,19 +143,81 @@ class HistoryView(ManagerRequiredMixin, TemplateView):
         context["permits"] = permits.select_related("unit").prefetch_related("risk_areas").order_by(
             "-created_at"
         )[:100]
+
+        evacuations = EvacuationEvent.objects.filter(organization=user.organization).select_related(
+            "unit", "triggered_by"
+        )
+        if user.unit:
+            evacuations = evacuations.filter(unit=user.unit)
+        context["evacuations"] = evacuations.order_by("-triggered_at")[:100]
         return context
 
 
 class TriggerEvacuationView(ManagerRequiredMixin, View):
+    """Evacuation triggered from a specific permit's atmospheric alarm."""
+
     def post(self, request, pk):
         permit = get_object_or_404(WorkPermit, pk=pk, organization=request.user.organization)
-        EvacuationEvent.objects.create(
+        event = EvacuationEvent.objects.create(
             organization=permit.organization,
             unit=permit.unit,
             reason=f"Alerta atmosférico na {permit.permit_number}",
+            source=EvacuationEvent.Source.GAS_ALARM,
             triggered_by=request.user,
         )
+        webhooks.notify_physical_endpoints(event, "triggered")
         return redirect(reverse("dashboard:home"))
+
+
+class TriggerGeneralAlertView(AlertTriggerRequiredMixin, View):
+    """The standalone 'botão de alerta' in the top nav — not tied to any
+    permit, usable by whoever notices danger first in the field."""
+
+    def post(self, request):
+        user = request.user
+        if not user.unit:
+            messages.error(request, "Seu usuário não tem uma unidade associada — não é possível acionar o alarme.")
+            return redirect("core:home")
+
+        reason = request.POST.get("reason", "").strip() or f"Alarme geral acionado por {user}"
+        event = EvacuationEvent.objects.create(
+            organization=user.organization,
+            unit=user.unit,
+            reason=reason,
+            source=EvacuationEvent.Source.MANUAL,
+            triggered_by=user,
+        )
+        webhooks.notify_physical_endpoints(event, "triggered")
+        messages.success(request, "Alarme geral acionado.")
+        return redirect(request.headers.get("referer") or reverse("core:home"))
+
+
+class ActiveAlertStatusView(LoginRequiredMixin, View):
+    """Polled every few seconds by every authenticated page (see
+    static/core/js/alert-poll.js) so an alarm triggered anywhere reaches
+    every open session — the web equivalent of the push notification a
+    future native app would receive instead."""
+
+    def get(self, request):
+        user = request.user
+        events = EvacuationEvent.objects.filter(organization=user.organization, ended_at__isnull=True)
+        if user.unit:
+            events = events.filter(unit=user.unit)
+        event = events.select_related("unit", "triggered_by").order_by("-triggered_at").first()
+        if not event:
+            return JsonResponse({"active": False})
+        return JsonResponse(
+            {
+                "active": True,
+                "id": event.pk,
+                "reason": event.reason,
+                "unit": event.unit.name,
+                "triggered_by": event.triggered_by.get_full_name() or event.triggered_by.username,
+                "triggered_at": event.triggered_at.isoformat(),
+                "triggered_at_label": timezone.localtime(event.triggered_at).strftime("%H:%M"),
+                "silenced": event.siren_silenced_at is not None,
+            }
+        )
 
 
 class SilenceSirenView(ManagerRequiredMixin, View):
@@ -153,6 +227,7 @@ class SilenceSirenView(ManagerRequiredMixin, View):
         )
         event.siren_silenced_at = timezone.now()
         event.save(update_fields=["siren_silenced_at"])
+        webhooks.notify_physical_endpoints(event, "silenced")
         return redirect(reverse("dashboard:home"))
 
 
@@ -163,4 +238,5 @@ class EndEvacuationView(ManagerRequiredMixin, View):
         )
         event.ended_at = timezone.now()
         event.save(update_fields=["ended_at"])
+        webhooks.notify_physical_endpoints(event, "ended")
         return redirect(reverse("dashboard:home"))

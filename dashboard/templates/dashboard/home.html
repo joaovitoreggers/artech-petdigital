@@ -5,11 +5,18 @@
 <div class="container">
 
   {% if active_evacuation %}
-    <div class="evacuation-overlay">
+    <div class="evacuation-overlay" id="dashboard-evacuation-overlay">
+      <div class="evacuation-beacons">
+        <span class="evacuation-beacon"></span><span class="evacuation-beacon"></span><span class="evacuation-beacon"></span>
+      </div>
       <div class="evacuation-title">EVACUAÇÃO ACIONADA</div>
-      <div style="font-size:16px;max-width:640px;">{{ active_evacuation.reason }} — unidade {{ active_evacuation.unit.name }}</div>
-      <div class="mono" style="font-size:12px;opacity:.9;">acionada às {{ active_evacuation.triggered_at|date:"H:i" }} por {{ active_evacuation.triggered_by }}</div>
-      <div style="display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;justify-content:center;">
+      <div class="evacuation-detail">{{ active_evacuation.reason }} — unidade {{ active_evacuation.unit.name }}</div>
+      <div class="evacuation-meta">
+        acionada às {{ active_evacuation.triggered_at|date:"H:i" }} por {{ active_evacuation.triggered_by.get_full_name|default:active_evacuation.triggered_by }}<br>
+        sirene local ativada · brigada e portaria notificadas<br>
+        equipes das frentes ativas recebendo alerta no app
+      </div>
+      <div class="evacuation-actions" style="display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;justify-content:center;">
         {% if not active_evacuation.siren_silenced_at %}
         <form method="post" action="{% url 'dashboard:silence_siren' active_evacuation.pk %}">
           {% csrf_token %}
@@ -138,6 +145,29 @@
       <div class="muted" style="font-size:13px;">Nenhuma ocorrência registrada.</div>
     {% endfor %}
   </div>
+
+  <div class="section-title"><h3>Últimos alertas e evacuações</h3></div>
+  <table class="table">
+    <thead><tr><th>Data/hora</th><th>Unidade</th><th>Origem</th><th>Motivo</th><th>Acionado por</th><th>Situação</th></tr></thead>
+    <tbody>
+      {% for event in recent_evacuations %}
+      <tr>
+        <td class="mono">{{ event.triggered_at|date:"d/m H:i" }}</td>
+        <td>{{ event.unit.name }}</td>
+        <td style="font-size:12px;">{{ event.get_source_display }}</td>
+        <td style="font-size:13px;">{{ event.reason }}</td>
+        <td style="font-size:13px;">{{ event.triggered_by.get_full_name|default:event.triggered_by.username }}</td>
+        <td>
+          <span class="status-badge {% if event.is_active %}status-danger{% else %}status-neutral{% endif %}">
+            {% if event.is_active %}ativa{% else %}encerrada{% endif %}
+          </span>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted" style="padding:20px 0;">Nenhum alerta ou evacuação registrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
   <div style="margin-top:40px;"><a href="{% url 'dashboard:history' %}" class="btn btn-secondary">Ver histórico completo →</a></div>
 </div>

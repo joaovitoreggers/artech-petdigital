@@ -35,7 +35,7 @@
 
   <div class="header">
     <div style="flex:1;">
-      <div class="kicker">Lar Cooperativa Agroindustrial · SESMT</div>
+      <div class="kicker">{{ organization.name }} · SESMT</div>
       <h2>Relatório de Permissões de Entrada e Trabalho</h2>
       <div style="font-size:11px;color:#5d5d60;margin-top:4px;">
         Período de {{ period_start|date:"d/m/Y" }} a {{ period_end|date:"d/m/Y" }}{% if unit %} · {{ unit.name }}{% endif %}
@@ -52,6 +52,7 @@
     <div><div class="kicker">Encerradas</div><div class="summary-value">{{ summary.closed }}</div></div>
     <div><div class="kicker">Ocorrências</div><div class="summary-value danger">{{ summary.incidents }}</div></div>
     <div><div class="kicker">Conformidade atmosférica</div><div class="summary-value">{{ summary.compliance }}%</div></div>
+    <div><div class="kicker">Alertas/evacuações</div><div class="summary-value{% if summary.evacuations %} danger{% endif %}">{{ summary.evacuations }}</div></div>
   </div>
 
   <h4>1. Permissões emitidas no período</h4>
@@ -107,6 +108,28 @@
       </div>
     {% endfor %}
   </div>
+
+  <h4>4. Alertas e evacuações no período</h4>
+  <table>
+    <thead>
+      <tr><th>Data/hora</th><th>Unidade</th><th>Origem</th><th>Motivo</th><th>Acionado por</th><th>Duração</th><th>Situação</th></tr>
+    </thead>
+    <tbody>
+      {% for row in evacuations %}
+      <tr>
+        <td class="mono">{{ row.event.triggered_at|date:"d/m/Y H:i" }}</td>
+        <td>{{ row.event.unit.name }}</td>
+        <td>{{ row.event.get_source_display }}</td>
+        <td>{{ row.event.reason }}</td>
+        <td>{{ row.event.triggered_by.get_full_name|default:row.event.triggered_by.username }}</td>
+        <td class="mono">{% if row.duration_minutes is not None %}{{ row.duration_minutes }} min{% else %}—{% endif %}</td>
+        <td{% if row.status == "em andamento" %} class="danger"{% endif %}>{{ row.status }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7">Nenhum alerta ou evacuação registrado no período.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
   <div class="signatures">
     <div>Técnico de Segurança do Trabalho</div>

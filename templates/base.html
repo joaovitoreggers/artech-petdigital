@@ -33,6 +33,12 @@
       {% endif %}
     </div>
     <div class="topnav-user">
+      {% if user.role == 'technician' or user.role == 'manager' or user.role == 'admin' or user.is_superuser %}
+        <form method="post" action="{% url 'dashboard:trigger_general_alert' %}" onsubmit="return confirm('Acionar o alarme geral agora? Todos com o sistema aberto na sua unidade serão alertados.');">
+          {% csrf_token %}
+          <button type="submit" class="btn" style="height:30px;font-size:11px;background:#8e2020;color:#fdf3f3;border-color:#8e2020;">🚨 Alerta</button>
+        </form>
+      {% endif %}
       <span>{{ user.get_full_name|default:user.username }}</span>
       <form method="post" action="{% url 'accounts:logout' %}">
         {% csrf_token %}
@@ -40,6 +46,7 @@
       </form>
     </div>
   </div>
+  <script src="{% static 'core/js/alert-poll.js' %}" defer></script>
   {% endif %}
 
   {% if messages %}

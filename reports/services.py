@@ -5,6 +5,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from weasyprint import HTML
 
+from dashboard.models import EvacuationEvent
 from permits.constants import GAS_LIMITS, gas_limit_display
 from permits.models import GasReading, WorkPermit
 
@@ -78,6 +79,31 @@ def _daily_condition(period_start, period_end, permits):
     return days
 
 
+def _evacuations_in_period(organization, period_start, period_end, unit):
+    events = EvacuationEvent.objects.filter(
+        organization=organization,
+        triggered_at__date__gte=period_start,
+        triggered_at__date__lte=period_end,
+    )
+    if unit:
+        events = events.filter(unit=unit)
+    events = events.select_related("unit", "triggered_by").order_by("triggered_at")
+
+    rows = []
+    for event in events:
+        duration_minutes = None
+        if event.ended_at:
+            duration_minutes = round((event.ended_at - event.triggered_at).total_seconds() / 60)
+        rows.append(
+            {
+                "event": event,
+                "duration_minutes": duration_minutes,
+                "status": "concluída" if event.ended_at else "em andamento",
+            }
+        )
+    return rows
+
+
 def build_report_context(organization, period_start, period_end, unit, generated_by):
     permits = list(_permits_in_period(organization, period_start, period_end, unit))
     monitored = [
@@ -88,7 +114,9 @@ def build_report_context(organization, period_start, period_end, unit, generated
     total_readings = GasReading.objects.filter(work_permit__in=permits)
     compliance_total = total_readings.count()
     compliance_ok = total_readings.filter(is_within_limits=True).count()
+    evacuations = _evacuations_in_period(organization, period_start, period_end, unit)
     return {
+        "organization": organization,
         "period_start": period_start,
         "period_end": period_end,
         "unit": unit,
@@ -96,11 +124,13 @@ def build_report_context(organization, period_start, period_end, unit, generated
         "generated_at": timezone.now(),
         "permits": permits,
         "monitored": monitored,
+        "evacuations": evacuations,
         "summary": {
             "total_permits": len(permits),
             "closed": sum(1 for p in permits if p.status == WorkPermit.Status.CLOSED),
             "incidents": sum(1 for p in permits if p.status == WorkPermit.Status.INCIDENT),
             "compliance": round((compliance_ok / compliance_total) * 100, 1) if compliance_total else 100.0,
+            "evacuations": len(evacuations),
         },
         "daily_condition": _daily_condition(period_start, period_end, permits),
         "gas_limits": GAS_LIMITS,
